@@ -20,6 +20,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +31,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,100 +44,193 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.project3temp.data.Categories
-import com.example.project3temp.data.Dessert
 import com.example.project3temp.data.DessertCategory
-import com.example.project3temp.data.DummyData
 import com.example.project3temp.data.MenuItem
+import com.example.project3temp.data.network.CafeMenusResponse
+import com.example.project3temp.data.network.NetworkModule
+import com.example.project3temp.data.network.formatHours
+import com.example.project3temp.data.network.toUserMessage
 import com.example.project3temp.ui.theme.BrandBackground
+import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
-import com.example.project3temp.ui.theme.Project3tempTheme
 import com.example.project3temp.ui.theme.SoldOutRed
 import java.text.NumberFormat
 import java.util.Locale
 
+private sealed interface DetailUiState {
+    data object Loading : DetailUiState
+    data class Content(val cafe: CafeMenusResponse) : DetailUiState
+    data class Error(val message: String) : DetailUiState
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DessertDetailScreen(
-    dessert: Dessert,
+    cafeId: Int,
     onClose: () -> Unit,
 ) {
-    val groupedByCategory = dessert.menuItems
-        .groupBy { it.categoryId }
-        .toList()
+    var uiState by remember { mutableStateOf<DetailUiState>(DetailUiState.Loading) }
+    var reloadKey by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(cafeId, reloadKey) {
+        uiState = DetailUiState.Loading
+        uiState = runCatching { NetworkModule.cafeApi.getMenus(cafeId) }
+            .fold(
+                onSuccess = { DetailUiState.Content(it) },
+                onFailure = { DetailUiState.Error(it.toUserMessage()) },
+            )
+    }
 
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
             TopAppBar(
-                title = { DetailTitle(dessert = dessert) },
+                title = {
+                    val title = (uiState as? DetailUiState.Content)?.cafe?.cafeName ?: "카페 상세"
+                    DetailTitle(storeName = title, areaLabel = (uiState as? DetailUiState.Content)?.cafe?.address)
+                },
                 actions = {
                     IconButton(onClick = onClose) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "닫기",
-                        )
+                        Icon(Icons.Default.Close, contentDescription = "닫기")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BrandBackground),
             )
         },
     ) { padding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            item {
-                AsyncImage(
-                    model = dessert.imageUrl,
-                    contentDescription = dessert.storeName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .background(Color(0xFFF1ECE6)),
+            when (val state = uiState) {
+                DetailUiState.Loading -> LoadingView()
+                is DetailUiState.Error -> ErrorView(
+                    message = state.message,
+                    onRetry = { reloadKey++ },
                 )
+                is DetailUiState.Content -> CafeContent(cafe = state.cafe)
             }
-
-            if (!dessert.intro.isNullOrBlank()) {
-                item {
-                    Text(
-                        text = dessert.intro,
-                        fontSize = 14.sp,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(
-                            horizontal = 16.dp,
-                            vertical = 16.dp,
-                        ),
-                    )
-                }
-            } else {
-                item { Spacer(Modifier.height(8.dp)) }
-            }
-
-            groupedByCategory.forEach { (categoryId, items) ->
-                val category = Categories.byId(categoryId)
-                item(key = "header-$categoryId") {
-                    CategoryHeader(category = category)
-                }
-                items(items, key = { "menu-${it.id}" }) { item ->
-                    MenuRow(category = category, item = item)
-                }
-            }
-
-            item { Spacer(Modifier.height(28.dp)) }
         }
     }
 }
 
 @Composable
-private fun DetailTitle(dessert: Dessert) {
-    val category = Categories.byId(dessert.categoryId)
+private fun LoadingView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = BrandOrange)
+    }
+}
+
+@Composable
+private fun ErrorView(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "불러오기 실패",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = BrandOrange),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text("다시 시도", color = Color.White)
+        }
+    }
+}
+
+@Composable
+private fun CafeContent(cafe: CafeMenusResponse) {
+    val menuItems: List<MenuItem> = remember(cafe) {
+        cafe.menu.mapIndexed { idx, dto ->
+            MenuItem(
+                id = "${cafe.cafeId}-$idx",
+                typeId = dto.typeId,
+                itemName = dto.itemName,
+                cost = dto.cost,
+                stock = dto.stock,
+            )
+        }
+    }
+    val groupedByCategory = menuItems.groupBy { it.typeId }.toList()
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            AsyncImage(
+                model = cafe.imageUrl,
+                contentDescription = cafe.cafeName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .background(Color(0xFFF1ECE6)),
+            )
+        }
+
+        formatHours(cafe.open, cafe.close)?.let { hours ->
+            item {
+                Text(
+                    text = hours,
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
+        }
+
+        if (!cafe.description.isNullOrBlank()) {
+            item {
+                Text(
+                    text = cafe.description,
+                    fontSize = 14.sp,
+                    color = Color.DarkGray,
+                    modifier = Modifier.padding(
+                        horizontal = 16.dp,
+                        vertical = if (formatHours(cafe.open, cafe.close) == null) 16.dp else 0.dp,
+                    ),
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+        } else {
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+
+        groupedByCategory.forEach { (typeId, items) ->
+            val category = Categories.byTypeId(typeId)
+            item(key = "header-$typeId") {
+                CategoryHeader(category = category)
+            }
+            items(items, key = { "menu-${it.id}" }) { item ->
+                MenuRow(category = category, item = item)
+            }
+        }
+
+        item { Spacer(Modifier.height(28.dp)) }
+    }
+}
+
+@Composable
+private fun DetailTitle(storeName: String, areaLabel: String?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -137,29 +239,32 @@ private fun DetailTitle(dessert: Dessert) {
                 .background(BrandOrangeSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = category.emoji, fontSize = 20.sp)
+            Text(text = "🍰", fontSize = 20.sp)
         }
         Spacer(Modifier.width(10.dp))
         Column {
             Text(
-                text = dessert.storeName,
+                text = storeName,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(12.dp),
-                )
-                Spacer(Modifier.width(2.dp))
-                Text(
-                    text = dessert.areaLabel,
-                    fontSize = 12.sp,
-                    color = Color.Gray,
-                )
+            if (!areaLabel.isNullOrBlank()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = Color.Gray,
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        text = areaLabel,
+                        fontSize = 12.sp,
+                        color = Color.Gray,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }
@@ -173,17 +278,9 @@ private fun CategoryHeader(category: DessertCategory) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        Text(
-            text = "■",
-            fontSize = 12.sp,
-            color = Color.DarkGray,
-        )
+        Text(text = "■", fontSize = 12.sp, color = Color.DarkGray)
         Spacer(Modifier.width(6.dp))
-        Text(
-            text = category.label,
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Text(text = category.label, fontSize = 15.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -208,7 +305,7 @@ private fun MenuRow(category: DessertCategory, item: MenuItem) {
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            text = item.name,
+            text = item.itemName,
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             color = nameColor,
@@ -216,9 +313,9 @@ private fun MenuRow(category: DessertCategory, item: MenuItem) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = formatPrice(item.price),
+            text = formatCost(item.cost),
             fontSize = 14.sp,
-            color = if (item.price == null) Color.Gray else Color.DarkGray,
+            color = if (item.cost == null) Color.Gray else Color.DarkGray,
             textAlign = TextAlign.End,
             modifier = Modifier.width(96.dp),
         )
@@ -257,17 +354,6 @@ private fun StockLabel(stock: Int?) {
     }
 }
 
-private fun formatPrice(price: Int?): String =
-    if (price == null) "정보 없음"
-    else "₩" + NumberFormat.getNumberInstance(Locale.KOREA).format(price)
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 780)
-@Composable
-private fun DessertDetailScreenPreview() {
-    Project3tempTheme {
-        DessertDetailScreen(
-            dessert = DummyData.desserts.first(),
-            onClose = {},
-        )
-    }
-}
+private fun formatCost(cost: Int?): String =
+    if (cost == null) "정보 없음"
+    else "₩" + NumberFormat.getNumberInstance(Locale.KOREA).format(cost)

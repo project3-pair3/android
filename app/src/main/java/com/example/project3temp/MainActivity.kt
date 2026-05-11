@@ -8,17 +8,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.example.project3temp.data.Dessert
-import com.example.project3temp.data.DessertRepo
 import com.example.project3temp.ui.compose.ComposeScreen
 import com.example.project3temp.ui.detail.DessertDetailScreen
 import com.example.project3temp.ui.feed.DessertFeedScreen
 import com.example.project3temp.ui.theme.Project3tempTheme
 
+private const val MY_CAFE_ID = 1
+
 private sealed interface Screen {
     data object Feed : Screen
     data object Compose : Screen
-    data class Detail(val dessert: Dessert) : Screen
+    data class Detail(val cafeId: Int) : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -32,19 +32,16 @@ class MainActivity : ComponentActivity() {
                 when (val current = screen) {
                     is Screen.Feed -> DessertFeedScreen(
                         onAddClick = { screen = Screen.Compose },
-                        onCardClick = { screen = Screen.Detail(it) },
+                        onCardClick = { cafeId -> screen = Screen.Detail(cafeId) },
                     )
 
                     is Screen.Compose -> ComposeScreen(
+                        cafeId = MY_CAFE_ID,
                         onClose = { screen = Screen.Feed },
-                        onSubmit = { dessert ->
-                            DessertRepo.addAtTop(dessert)
-                            screen = Screen.Feed
-                        },
                     )
 
                     is Screen.Detail -> DessertDetailScreen(
-                        dessert = current.dessert,
+                        cafeId = current.cafeId,
                         onClose = { screen = Screen.Feed },
                     )
                 }

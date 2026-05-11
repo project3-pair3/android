@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +41,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -47,6 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,13 +63,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.project3temp.data.Categories
-import com.example.project3temp.data.Dessert
 import com.example.project3temp.data.DessertCategory
-import com.example.project3temp.data.MenuItem
+import com.example.project3temp.data.network.CreateMenusRequest
+import com.example.project3temp.data.network.MenuItemDto
+import com.example.project3temp.data.network.NetworkModule
+import com.example.project3temp.data.network.toUserMessage
 import com.example.project3temp.ui.theme.BrandBackground
 import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
 import com.example.project3temp.ui.theme.DistrictChipBg
+import kotlinx.coroutines.launch
 
 private data class MenuItemDraft(
     val id: String,
@@ -78,8 +85,8 @@ private data class MenuItemDraft(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComposeScreen(
+    cafeId: Int,
     onClose: () -> Unit,
-    onSubmit: (Dessert) -> Unit,
 ) {
     var imageUri by remember { mutableStateOf<String?>(null) }
     var intro by remember { mutableStateOf("") }
@@ -93,6 +100,9 @@ fun ComposeScreen(
             ),
         )
     }
+    var isSubmitting by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -100,7 +110,7 @@ fun ComposeScreen(
         if (uri != null) imageUri = uri.toString()
     }
 
-    val canSubmit =
+    val canSubmit = !isSubmitting &&
         imageUri != null && menuItems.isNotEmpty() && menuItems.all { it.name.isNotBlank() }
 
     Scaffold(
@@ -122,6 +132,7 @@ fun ComposeScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BrandBackground),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
@@ -168,12 +179,27 @@ fun ComposeScreen(
 
             Button(
                 onClick = {
-                    val dessert = buildDessert(
-                        imageUrl = imageUri ?: return@Button,
+                    val image = imageUri ?: return@Button
+                    val request = buildCreateMenusRequest(
+                        imageUrl = image,
                         intro = intro,
                         drafts = menuItems,
                     )
-                    onSubmit(dessert)
+                    isSubmitting = true
+                    scope.launch {
+                        val result = runCatching {
+                            NetworkModule.cafeApi.createMenus(cafeId, request)
+                        }
+                        isSubmitting = false
+                        result.fold(
+                            onSuccess = { onClose() },
+                            onFailure = { e ->
+                                snackbarHostState.showSnackbar(
+                                    "업로드 실패: ${e.toUserMessage()}",
+                                )
+                            },
+                        )
+                    }
                 },
                 enabled = canSubmit,
                 modifier = Modifier
@@ -186,12 +212,20 @@ fun ComposeScreen(
                     disabledContainerColor = Color(0xFFD8D8D8),
                 ),
             ) {
-                Text(
-                    text = "카페 정보 업로드",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                )
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp),
+                    )
+                } else {
+                    Text(
+                        text = "카페 정보 업로드",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                    )
+                }
             }
 
             Spacer(Modifier.height(28.dp))
@@ -568,34 +602,20 @@ private fun brandFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun newDraftId(): String =
     System.currentTimeMillis().toString() + "-" + (0..9999).random()
 
-private fun buildDessert(
+private fun buildCreateMenusRequest(
     imageUrl: String,
     intro: String,
     drafts: List<MenuItemDraft>,
-): Dessert {
-    val items = drafts.map { d ->
-        MenuItem(
-            id = d.id,
-            categoryId = d.categoryId,
-            name = d.name.trim(),
-            price = d.price.toIntOrNull(),
-            stock = d.stock.toIntOrNull(),
+): CreateMenusRequest = CreateMenusRequest(
+    imageUrl = imageUrl,
+    description = intro.trim(),
+    menu = drafts.map { d ->
+        MenuItemDto(
+            itemName = d.name.trim(),
+            typeId = Categories.byId(d.categoryId).typeId,
+            cost = d.price.toIntOrNull() ?: 0,
+            stock = d.stock.toIntOrNull() ?: 0,
         )
-    }
-    val totalStock = items.sumOf { it.stock ?: 0 }
-    val soldOut = items.count { it.stock == 0 }
-    val primaryCategory = items.firstOrNull()?.categoryId ?: Categories.selectable.first().id
+    },
+)
 
-    return Dessert(
-        id = newDraftId(),
-        storeName = "내 카페",
-        areaLabel = "마포구 · 망원동",
-        district = "마포구",
-        categoryId = primaryCategory,
-        stockToday = totalStock,
-        soldOutCount = soldOut,
-        imageUrl = imageUrl,
-        intro = intro.trim().ifBlank { null },
-        menuItems = items,
-    )
-}

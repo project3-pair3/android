@@ -25,6 +25,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,7 +38,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,38 +50,57 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.project3temp.data.Categories
-import com.example.project3temp.data.Dessert
 import com.example.project3temp.data.DessertCategory
-import com.example.project3temp.data.DessertRepo
 import com.example.project3temp.data.Districts
+import com.example.project3temp.data.ListingTypes
+import com.example.project3temp.data.network.CafeListItem
+import com.example.project3temp.data.network.NetworkModule
+import com.example.project3temp.data.network.formatHours
+import com.example.project3temp.data.network.toUserMessage
 import com.example.project3temp.ui.theme.BrandBackground
 import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
 import com.example.project3temp.ui.theme.DistrictChipBg
-import com.example.project3temp.ui.theme.Project3tempTheme
 import com.example.project3temp.ui.theme.SoldOutRed
+
+private const val FIXED_CITY = "서울"
+
+private sealed interface FeedUiState {
+    data object Loading : FeedUiState
+    data class Content(val items: List<CafeListItem>) : FeedUiState
+    data class Error(val message: String) : FeedUiState
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DessertFeedScreen(
     onAddClick: () -> Unit = {},
-    onCardClick: (Dessert) -> Unit = {},
+    onCardClick: (Int) -> Unit = {},
 ) {
     var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) }
-    var selectedRegion by remember { mutableStateOf("서울") }
     var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) }
+    var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) }
+    var uiState by remember { mutableStateOf<FeedUiState>(FeedUiState.Loading) }
+    var reloadKey by remember { mutableIntStateOf(0) }
 
-    val filtered = DessertRepo.items.filter { dessert ->
-        val byCategory = selectedCategoryId == Categories.ALL_ID ||
-            dessert.menuItems.any { it.categoryId == selectedCategoryId }
-        val byDistrict =
-            selectedDistrict == Districts.ALL_LABEL || dessert.district == selectedDistrict
-        byCategory && byDistrict
+    LaunchedEffect(selectedCategoryId, selectedDistrict, selectedListingType, reloadKey) {
+        uiState = FeedUiState.Loading
+        uiState = runCatching {
+            NetworkModule.cafeApi.listCafes(
+                categoryId = Categories.byId(selectedCategoryId).typeId,
+                city = FIXED_CITY,
+                district = selectedDistrict,
+                listingType = selectedListingType,
+            )
+        }.fold(
+            onSuccess = { FeedUiState.Content(it) },
+            onFailure = { FeedUiState.Error(it.toUserMessage()) },
+        )
     }
 
     Scaffold(
@@ -116,13 +140,28 @@ fun DessertFeedScreen(
                 onSelect = { selectedCategoryId = it },
             )
             FilterRow(
-                selectedRegion = selectedRegion,
-                onRegionChange = { selectedRegion = it },
                 selectedDistrict = selectedDistrict,
                 onDistrictChange = { selectedDistrict = it },
+                selectedListingType = selectedListingType,
+                onListingTypeChange = { selectedListingType = it },
             )
-            FeedHeader(updatedCount = filtered.size)
-            DessertGrid(items = filtered, onCardClick = onCardClick)
+            FeedHeader(
+                count = (uiState as? FeedUiState.Content)?.items?.size ?: 0,
+            )
+            Box(modifier = Modifier.fillMaxSize()) {
+                when (val state = uiState) {
+                    FeedUiState.Loading -> LoadingView()
+                    is FeedUiState.Error -> ErrorView(
+                        message = state.message,
+                        onRetry = { reloadKey++ },
+                    )
+                    is FeedUiState.Content -> if (state.items.isEmpty()) {
+                        EmptyView()
+                    } else {
+                        DessertGrid(items = state.items, onCardClick = onCardClick)
+                    }
+                }
+            }
         }
     }
 }
@@ -185,27 +224,46 @@ private fun CategoryItem(
 
 @Composable
 private fun FilterRow(
-    selectedRegion: String,
-    onRegionChange: (String) -> Unit,
     selectedDistrict: String,
     onDistrictChange: (String) -> Unit,
+    selectedListingType: String,
+    onListingTypeChange: (String) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChipDropdown(
-            label = selectedRegion,
-            options = listOf("서울"),
-            onSelect = onRegionChange,
-        )
+        StaticChip(label = FIXED_CITY)
         FilterChipDropdown(
             label = selectedDistrict,
             options = Districts.seoul,
             onSelect = onDistrictChange,
         )
+        Spacer(Modifier.weight(1f))
+        FilterChipDropdown(
+            label = ListingTypes.labelOf(selectedListingType),
+            options = ListingTypes.options.map { it.label },
+            onSelect = { selected ->
+                ListingTypes.options.firstOrNull { it.label == selected }
+                    ?.let { onListingTypeChange(it.value) }
+            },
+        )
+    }
+}
+
+@Composable
+private fun StaticChip(label: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(DistrictChipBg)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -251,7 +309,7 @@ private fun FilterChipDropdown(
 }
 
 @Composable
-private fun FeedHeader(updatedCount: Int) {
+private fun FeedHeader(count: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -259,7 +317,7 @@ private fun FeedHeader(updatedCount: Int) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "오늘 ${updatedCount}곳 업데이트",
+            text = "오늘 ${count}곳 업데이트",
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
         )
@@ -273,9 +331,55 @@ private fun FeedHeader(updatedCount: Int) {
 }
 
 @Composable
+private fun LoadingView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = BrandOrange)
+    }
+}
+
+@Composable
+private fun EmptyView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(
+            text = "조건에 맞는 카페가 없어요",
+            fontSize = 14.sp,
+            color = Color.Gray,
+        )
+    }
+}
+
+@Composable
+private fun ErrorView(message: String, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(text = "불러오기 실패", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onRetry,
+            colors = ButtonDefaults.buttonColors(containerColor = BrandOrange),
+            shape = RoundedCornerShape(12.dp),
+        ) {
+            Text("다시 시도", color = Color.White)
+        }
+    }
+}
+
+@Composable
 private fun DessertGrid(
-    items: List<Dessert>,
-    onCardClick: (Dessert) -> Unit,
+    items: List<CafeListItem>,
+    onCardClick: (Int) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -284,14 +388,14 @@ private fun DessertGrid(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = Modifier.fillMaxSize(),
     ) {
-        items(items, key = { it.id }) { dessert ->
-            DessertCard(dessert = dessert, onClick = { onCardClick(dessert) })
+        items(items, key = { it.id }) { cafe ->
+            CafeCard(cafe = cafe, onClick = { onCardClick(cafe.id) })
         }
     }
 }
 
 @Composable
-private fun DessertCard(dessert: Dessert, onClick: () -> Unit) {
+private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -301,50 +405,41 @@ private fun DessertCard(dessert: Dessert, onClick: () -> Unit) {
             .clickable(onClick = onClick),
     ) {
         Column {
-            Box {
-                AsyncImage(
-                    model = dessert.imageUrl,
-                    contentDescription = dessert.storeName,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f),
-                )
-                if (dessert.soldOutCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.65f))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                            .align(Alignment.TopEnd),
-                    ) {
-                        Text(
-                            text = "${dessert.soldOutCount}품절",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
+            AsyncImage(
+                model = cafe.imageUrl,
+                contentDescription = cafe.cafeName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .background(Color(0xFFF1ECE6)),
+            )
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = dessert.storeName,
+                    text = cafe.cafeName,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
+                formatHours(cafe.open, cafe.close)?.let { hours ->
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = hours,
+                        fontSize = 11.sp,
+                        color = Color.Gray,
+                        maxLines = 1,
+                    )
+                }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = dessert.areaLabel,
+                    text = cafe.address.orEmpty(),
                     fontSize = 11.sp,
                     color = Color.Gray,
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = "오늘 ${dessert.stockToday}개",
+                    text = "오늘 ${cafe.totalCount}개",
                     fontSize = 13.sp,
                     color = SoldOutRed,
                     fontWeight = FontWeight.Bold,
@@ -369,13 +464,5 @@ private fun AddFab(onClick: () -> Unit) {
             contentDescription = "재고 등록",
             tint = Color.White,
         )
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360, heightDp = 780)
-@Composable
-private fun DessertFeedScreenPreview() {
-    Project3tempTheme {
-        DessertFeedScreen()
     }
 }
