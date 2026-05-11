@@ -62,6 +62,7 @@ import com.example.project3temp.ui.theme.SoldOutRed
 import java.text.NumberFormat
 import java.util.Locale
 
+// 카페 재고 상세 정보 페이지의 3가지 상태
 private sealed interface DetailUiState {
     data object Loading : DetailUiState
     data class Content(val cafe: CafeMenusResponse) : DetailUiState

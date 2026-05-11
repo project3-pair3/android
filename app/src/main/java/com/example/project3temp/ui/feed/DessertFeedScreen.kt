@@ -74,7 +74,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // 현재 "시"는 "서울"만 사용 - 추 후 확장 가능
-private const val FIXED_CITY = "서울"
+private const val DEFAULT_CITY = "서울"
+private val cityOptions: List<String> = listOf(DEFAULT_CITY)
 
 // 피드 화면이 가질 수 있는 상태 3가지 - 로딩, 성공, 에러
 private sealed interface FeedUiState {
@@ -86,17 +87,18 @@ private sealed interface FeedUiState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DessertFeedScreen(
-    snackbarMessage: String? = null,
+    snackbarMessage: String? = null, // 카페 정보 추가 성공 후 메시지
     onSnackbarShown: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onCardClick: (Int, String) -> Unit = { _, _ -> },
 ) {
     var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) } // 메뉴 대분류 필터링
+    var selectedCity by remember { mutableStateOf(DEFAULT_CITY) } // 지역 "시" 필터링
     var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) } // 지역 "구" 필터링
     var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) } // 정렬 기준
     var uiState by remember { mutableStateOf<FeedUiState>(FeedUiState.Loading) } // 로딩중
     var reloadKey by remember { mutableIntStateOf(0) } // 에러 화면에서 LaunchEffect 재실행을 위한 더미 데이터
-    val snackbarHostState = remember { SnackbarHostState() }
+    val snackbarHostState = remember { SnackbarHostState() } // 카페 정보 등록 성공 메시지
 
     // 외부에서 메시지가 들어오면 3초간 보여주고 자동으로 숨김
     LaunchedEffect(snackbarMessage) {
@@ -105,19 +107,19 @@ fun DessertFeedScreen(
             snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Indefinite)
         }
         try {
-            delay(3000)
+            delay(3000) // snackbar 3초
         } finally {
             job.cancel()
             onSnackbarShown()
         }
     }
 
-    LaunchedEffect(selectedCategoryId, selectedDistrict, selectedListingType, reloadKey) {
+    LaunchedEffect(selectedCategoryId, selectedCity, selectedDistrict, selectedListingType, reloadKey) {
         uiState = FeedUiState.Loading
         uiState = runCatching {
-            NetworkModule.cafeApi.listCafes(
+            NetworkModule.cafeApi.listCafes( // /cafes GET
                 categoryId = Categories.byId(selectedCategoryId).typeId,
-                addressCity = FIXED_CITY,
+                addressCity = selectedCity,
                 addressDistrict = selectedDistrict,
                 listingType = selectedListingType,
             )
@@ -164,7 +166,9 @@ fun DessertFeedScreen(
                 selectedId = selectedCategoryId, // 선택중인 카테고리
                 onSelect = { selectedCategoryId = it }, // 상태 저장
             )
-            FilterRow( // 지역 필터링과 정렬, "시"는 서울로 고정 // todo 서울 이외의 "시" 적용
+            FilterRow( // 지역 필터링과 정렬 // todo 서울 이외의 "시" 추가
+                selectedCity = selectedCity, // "시" 필터링
+                onCityChange = { selectedCity = it },
                 selectedDistrict = selectedDistrict, // "구" 필터링
                 onDistrictChange = { selectedDistrict = it },
                 selectedListingType = selectedListingType, // 정렬 방식
@@ -194,7 +198,7 @@ fun DessertFeedScreen(
 // 메뉴 대분류 필터링
 @Composable
 private fun CategoryRow(
-    categories: List<DessertCategory>,
+    categories: List<DessertCategory>, // 메뉴 대분류 리스트
     selectedId: String,
     onSelect: (String) -> Unit,
 ) {
@@ -213,7 +217,7 @@ private fun CategoryRow(
 }
 
 
-// 메뉴 대분류 필터링 아이콘
+// 메뉴 대분류 필터링 1개 아이콘
 @Composable
 private fun CategoryItem(
     category: DessertCategory,
@@ -250,9 +254,11 @@ private fun CategoryItem(
     }
 }
 
-// "구" 필터링과 정렬 방식 선택
+// "시" / "구" 필터링과 정렬 방식 선택
 @Composable
 private fun FilterRow(
+    selectedCity: String,
+    onCityChange: (String) -> Unit,
     selectedDistrict: String,
     onDistrictChange: (String) -> Unit,
     selectedListingType: String,
@@ -265,7 +271,11 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StaticChip(label = FIXED_CITY) // 서울로 고정
+        FilterChipDropdown( // "시" 필터링 (현재 서울만)
+            label = selectedCity,
+            options = cityOptions,
+            onSelect = onCityChange,
+        )
         FilterChipDropdown( // "구" 필터링
             label = selectedDistrict,
             options = Districts.seoul,
@@ -284,22 +294,9 @@ private fun FilterRow(
 }
 
 @Composable
-private fun StaticChip(label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(DistrictChipBg)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-    ) {
-        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
 private fun FilterChipDropdown(
     label: String,
-    options: List<String>, // ListingType 2개
+    options: List<String>, // 서초구 ~ 서대문구 또는 ListingType 2개
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -337,6 +334,8 @@ private fun FilterChipDropdown(
     }
 }
 
+
+// 업데이트 가게 수
 @Composable
 private fun FeedHeader(count: Int) {
     Row(
@@ -350,15 +349,11 @@ private fun FeedHeader(count: Int) {
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = "지점별 보기",
-            fontSize = 12.sp,
-            color = Color.Gray,
-        )
     }
 }
 
+
+// 로딩 화면
 @Composable
 private fun LoadingView() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
