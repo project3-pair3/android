@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew install *)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(pdftoppm -png -r 100 -f 1 -l 1 \"/Users/admin/Desktop/Project3Temp/design/오늘의_재고__카페_재고_관리_조회_프로토타입.pdf\" /tmp/page)",
+      "Read(//private/tmp/**)",
+      "Bash(pdftoppm -png -r 200 -f 1 -l 1 \"/Users/admin/Desktop/Project3Temp/design/오늘의_재고__카페_재고_관리_조회_프로토타입.pdf\" /tmp/hires)",
+      "Bash(./gradlew :app:compileDebugKotlin)",
+      "Bash(export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\")",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")"
+    ]
+  }
+}
