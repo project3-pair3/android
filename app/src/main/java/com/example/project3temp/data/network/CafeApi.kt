@@ -10,8 +10,8 @@ interface CafeApi {
     @GET("cafes")
     suspend fun listCafes( // 4개 param 모두 not null
         @Query("categoryId") categoryId: Int,
-        @Query("city") city: String,
-        @Query("district") district: String,
+        @Query("addressCity") addressCity: String,
+        @Query("addressDistrict") addressDistrict: String,
         @Query("listingType") listingType: String,
     ): List<CafeListItem>
 

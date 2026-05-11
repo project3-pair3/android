@@ -6,7 +6,8 @@ import kotlinx.serialization.Serializable
 data class CafeMenusResponse(
     val cafeId: Int,
     val cafeName: String,
-    val address: String? = null,
+    val addressCity: String? = null,
+    val addressDistrict: String? = null,
     val addressDetail: String? = null,
     val description: String? = null,
     val open: String? = null,
@@ -38,7 +39,8 @@ data class CreateMenusRequest(
 data class CafeListItem(
     val id: Int,
     val cafeName: String,
-    val address: String? = null,
+    val addressCity: String? = null,
+    val addressDistrict: String? = null,
     val addressDetail: String? = null,
     val open: String? = null,
     val close: String? = null,

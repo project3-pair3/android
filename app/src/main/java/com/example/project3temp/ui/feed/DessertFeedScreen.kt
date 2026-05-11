@@ -80,7 +80,7 @@ private sealed interface FeedUiState {
 @Composable
 fun DessertFeedScreen(
     onAddClick: () -> Unit = {},
-    onCardClick: (Int) -> Unit = {},
+    onCardClick: (Int, String) -> Unit = { _, _ -> },
 ) {
     var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) }
     var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) }
@@ -93,8 +93,8 @@ fun DessertFeedScreen(
         uiState = runCatching {
             NetworkModule.cafeApi.listCafes(
                 categoryId = Categories.byId(selectedCategoryId).typeId,
-                city = FIXED_CITY,
-                district = selectedDistrict,
+                addressCity = FIXED_CITY,
+                addressDistrict = selectedDistrict,
                 listingType = selectedListingType,
             )
         }.fold(
@@ -379,7 +379,7 @@ private fun ErrorView(message: String, onRetry: () -> Unit) {
 @Composable
 private fun DessertGrid(
     items: List<CafeListItem>,
-    onCardClick: (Int) -> Unit,
+    onCardClick: (Int, String) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2),
@@ -389,7 +389,7 @@ private fun DessertGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         items(items, key = { it.id }) { cafe ->
-            CafeCard(cafe = cafe, onClick = { onCardClick(cafe.id) })
+            CafeCard(cafe = cafe, onClick = { onCardClick(cafe.id, cafe.cafeName) })
         }
     }
 }
@@ -432,7 +432,9 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
                 }
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    text = cafe.address.orEmpty(),
+                    text = listOfNotNull(cafe.addressCity, cafe.addressDistrict)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" "),
                     fontSize = 11.sp,
                     color = Color.Gray,
                     maxLines = 1,

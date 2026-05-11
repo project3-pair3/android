@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -71,6 +72,7 @@ private sealed interface DetailUiState {
 @Composable
 fun DessertDetailScreen(
     cafeId: Int,
+    cafeName: String,
     onClose: () -> Unit,
 ) {
     var uiState by remember { mutableStateOf<DetailUiState>(DetailUiState.Loading) }
@@ -90,8 +92,18 @@ fun DessertDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val title = (uiState as? DetailUiState.Content)?.cafe?.cafeName ?: "카페 상세"
-                    DetailTitle(storeName = title, areaLabel = (uiState as? DetailUiState.Content)?.cafe?.address)
+                    val cafe = (uiState as? DetailUiState.Content)?.cafe
+                    val areaLabel = cafe?.let {
+                        listOfNotNull(it.addressCity, it.addressDistrict)
+                            .filter { part -> part.isNotBlank() }
+                            .joinToString(" ")
+                            .ifBlank { null }
+                    }
+                    DetailTitle(
+                        storeName = cafeName,
+                        areaLabel = areaLabel,
+                        addressDetail = cafe?.addressDetail,
+                    )
                 },
                 actions = {
                     IconButton(onClick = onClose) {
@@ -229,8 +241,9 @@ private fun CafeContent(cafe: CafeMenusResponse) {
     }
 }
 
+// 메인 카드 클릭 - 상세 페이지 - 타이틀 바
 @Composable
-private fun DetailTitle(storeName: String, areaLabel: String?) {
+private fun DetailTitle(storeName: String, areaLabel: String?, addressDetail: String?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
@@ -243,33 +256,49 @@ private fun DetailTitle(storeName: String, areaLabel: String?) {
         }
         Spacer(Modifier.width(10.dp))
         Column {
-            Text(
+            Text( // 카페 이름
                 text = storeName,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
             )
-            if (!areaLabel.isNullOrBlank()) {
+            val hasArea = !areaLabel.isNullOrBlank()
+            val hasDetail = !addressDetail.isNullOrBlank()
+            if (hasArea || hasDetail) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.LocationOn,
+                        imageVector = Icons.Default.LocationOn, // 지도 핀 아이콘
                         contentDescription = null,
                         tint = Color.Gray,
                         modifier = Modifier.size(12.dp),
                     )
                     Spacer(Modifier.width(2.dp))
-                    Text(
-                        text = areaLabel,
-                        fontSize = 12.sp,
-                        color = Color.Gray,
-                        maxLines = 1,
-                    )
+                    if (hasArea) {
+                        Text( // 시 + 구
+                            text = areaLabel,
+                            fontSize = 12.sp,
+                            color = Color.Gray,
+                            maxLines = 1,
+                        )
+                    }
+                    if (hasArea && hasDetail) Spacer(Modifier.width(6.dp))
+                    if (hasDetail) {
+                        Text( // 상세 주소
+                            text = addressDetail,
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+// 메뉴 대분류
 @Composable
 private fun CategoryHeader(category: DessertCategory) {
     Row(
@@ -284,9 +313,10 @@ private fun CategoryHeader(category: DessertCategory) {
     }
 }
 
+// 하나의 메뉴 - 행
 @Composable
 private fun MenuRow(category: DessertCategory, item: MenuItem) {
-    val isSoldOut = item.stock == 0
+    val isSoldOut = item.stock == 0 // 솔드 아웃 표시
     val nameColor = if (isSoldOut) Color.Gray else Color.Black
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -301,11 +331,11 @@ private fun MenuRow(category: DessertCategory, item: MenuItem) {
                 .background(BrandOrangeSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = category.emoji, fontSize = 16.sp)
+            Text(text = category.emoji, fontSize = 16.sp) // 대분류에 해당하는 이모지
         }
         Spacer(Modifier.width(12.dp))
         Text(
-            text = item.itemName,
+            text = item.itemName, // 메뉴 이름
             fontSize = 15.sp,
             fontWeight = FontWeight.Medium,
             color = nameColor,
@@ -313,7 +343,7 @@ private fun MenuRow(category: DessertCategory, item: MenuItem) {
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = formatCost(item.cost),
+            text = formatCost(item.cost), // 가격 (nullable)
             fontSize = 14.sp,
             color = if (item.cost == null) Color.Gray else Color.DarkGray,
             textAlign = TextAlign.End,
@@ -324,11 +354,12 @@ private fun MenuRow(category: DessertCategory, item: MenuItem) {
             modifier = Modifier.width(72.dp),
             contentAlignment = Alignment.CenterEnd,
         ) {
-            StockLabel(stock = item.stock)
+            StockLabel(stock = item.stock) // 재고 (nullable)
         }
     }
 }
 
+// 재고 표시 방법
 @Composable
 private fun StockLabel(stock: Int?) {
     when {
@@ -338,14 +369,14 @@ private fun StockLabel(stock: Int?) {
                 .clip(RoundedCornerShape(6.dp))
                 .background(SoldOutRed.copy(alpha = 0.12f))
                 .padding(horizontal = 8.dp, vertical = 3.dp),
-        ) {
+        ) { // stock 이 0이면
             Text(
                 text = "SOLD OUT",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 color = SoldOutRed,
             )
-        }
+        } // stock 이 0이 아니면
         else -> Text(
             text = "${stock}개",
             fontSize = 14.sp,
@@ -354,6 +385,7 @@ private fun StockLabel(stock: Int?) {
     }
 }
 
+// 가격 포맷 - 1000단위로 , 표기
 private fun formatCost(cost: Int?): String =
     if (cost == null) "정보 없음"
     else "₩" + NumberFormat.getNumberInstance(Locale.KOREA).format(cost)

@@ -18,7 +18,7 @@ private const val MY_CAFE_ID = 1
 private sealed interface Screen {
     data object Feed : Screen
     data object Compose : Screen
-    data class Detail(val cafeId: Int) : Screen
+    data class Detail(val cafeId: Int, val cafeName: String) : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -32,7 +32,9 @@ class MainActivity : ComponentActivity() {
                 when (val current = screen) {
                     is Screen.Feed -> DessertFeedScreen(
                         onAddClick = { screen = Screen.Compose },
-                        onCardClick = { cafeId -> screen = Screen.Detail(cafeId) },
+                        onCardClick = { cafeId, cafeName ->
+                            screen = Screen.Detail(cafeId, cafeName)
+                        },
                     )
 
                     is Screen.Compose -> ComposeScreen(
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
                     is Screen.Detail -> DessertDetailScreen(
                         cafeId = current.cafeId,
+                        cafeName = current.cafeName,
                         onClose = { screen = Screen.Feed },
                     )
                 }
