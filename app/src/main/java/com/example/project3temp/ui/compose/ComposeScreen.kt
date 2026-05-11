@@ -84,20 +84,23 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.TimeZone
 
+// addressCity 드롭다운에 쓸 실제 시 목록 (기본 서울)
 private const val CITY_SEOUL = "서울"
 
 // addressDistrict 드롭다운에 쓸 실제 구 목록 ("전체" 제외)
 private val districtOptions: List<String> = Districts.seoul.filter { it != Districts.ALL_LABEL }
 
+// 카페 메뉴 기본 정보
 private data class MenuItemDraft(
     val id: String,
-    val categoryId: String,
+    val categoryId: String, // 대분류
     val name: String = "",
-    val price: String = "",
-    val stock: String = "",
+    val price: String = "", // nullable
+    val stock: String = "", // nullable
 )
 
 // 날짜와 시간을 따로 보관 (DatePicker → TimePicker 순서로 입력 받음)
+// todo 시간만 입력받도록 수정
 private data class DateTimeInput(
     val dateMillis: Long? = null, // DatePickerState가 주는 UTC 자정 millis
     val hour: Int? = null,
@@ -170,6 +173,7 @@ fun ComposeScreen(
         if (uri != null) imageUri = uri.toString()
     }
 
+    // not null 필드 입력 여부 확인
     val canSubmit = !isSubmitting &&
         cafeName.isNotBlank() &&
         addressDistrict != null &&
@@ -206,10 +210,12 @@ fun ComposeScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState()),
         ) {
+            // 카페 입력 - 필수
             CafeNameSection(value = cafeName, onChange = { cafeName = it })
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 사진 업로드 1장 - 필수
             PhotoUploadBox(
                 imageUri = imageUri,
                 onPick = {
@@ -223,6 +229,7 @@ fun ComposeScreen(
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 주소 - 시, 구, 상세 주소 - 필수
             AddressSection(
                 city = addressCity,
                 onCityChange = { addressCity = it },
@@ -234,6 +241,8 @@ fun ComposeScreen(
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 영업 시간 - 필수
+            // todo 시간만 받도록 추 후 수정
             HoursSection(
                 open = openInput,
                 onOpenChange = { openInput = it },
@@ -243,10 +252,12 @@ fun ComposeScreen(
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 한 줄 소개 (description) - nullable
             IntroSection(value = intro, onChange = { intro = it })
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 메뉴 정보 기입 - 적어도 1개 입력
             MenuItemsSection(
                 items = menuItems,
                 onUpdate = { idx, updated ->
@@ -283,7 +294,7 @@ fun ComposeScreen(
                     isSubmitting = true
                     scope.launch {
                         val result = runCatching {
-                            NetworkModule.cafeApi.createCafeWithMenu(request)
+                            NetworkModule.cafeApi.createCafeWithMenu(request) // /cafes POST API
                         }
                         isSubmitting = false
                         result.fold(
@@ -356,11 +367,11 @@ private fun CafeNameSection(
 
 @Composable
 private fun AddressSection(
-    city: String,
+    city: String, // 시
     onCityChange: (String) -> Unit,
-    district: String?,
+    district: String?, // 구
     onDistrictChange: (String) -> Unit,
-    detail: String,
+    detail: String, // 세부
     onDetailChange: (String) -> Unit,
 ) {
     Column(
@@ -371,7 +382,7 @@ private fun AddressSection(
         SectionLabel(label = "주소", required = true)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ChipDropdown(
+            ChipDropdown( // 현재 서울만 선택 가능
                 label = city,
                 options = listOf(CITY_SEOUL),
                 onSelect = onCityChange,
@@ -379,7 +390,7 @@ private fun AddressSection(
             )
             ChipDropdown(
                 label = district ?: "구 선택",
-                options = districtOptions,
+                options = districtOptions, // "구" 리스트
                 onSelect = onDistrictChange,
                 modifier = Modifier.weight(1f),
             )
@@ -414,13 +425,13 @@ private fun HoursSection(
         SectionLabel(label = "영업 시간", required = true)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DateTimeField(
+            DateTimeField( // open
                 label = "오픈",
                 value = open,
                 onChange = onOpenChange,
                 modifier = Modifier.weight(1f),
             )
-            DateTimeField(
+            DateTimeField( // close
                 label = "마감",
                 value = close,
                 onChange = onCloseChange,
@@ -430,6 +441,7 @@ private fun HoursSection(
     }
 }
 
+// description 입력
 @Composable
 private fun IntroSection(
     value: String,
@@ -462,7 +474,7 @@ private fun IntroSection(
 
 @Composable
 private fun MenuItemsSection(
-    items: List<MenuItemDraft>,
+    items: List<MenuItemDraft>, // MenuItemDraft : 메뉴 기본 정보
     onUpdate: (Int, MenuItemDraft) -> Unit,
     onDelete: (Int) -> Unit,
     onAdd: () -> Unit,
@@ -490,7 +502,7 @@ private fun MenuItemsSection(
             )
             Spacer(Modifier.weight(1f))
             Text(
-                text = "${items.size}개",
+                text = "${items.size}개", // 메뉴의 종류 수
                 fontSize = 12.sp,
                 color = Color.Gray,
             )
@@ -515,6 +527,7 @@ private fun MenuItemsSection(
 
 // ────────── 공통 컴포넌트 ──────────
 
+// 입력 세션 이름과 필수 여부
 @Composable
 private fun SectionLabel(label: String, required: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -533,10 +546,11 @@ private fun SectionLabel(label: String, required: Boolean) {
     }
 }
 
+// 드롭다운
 @Composable
 private fun ChipDropdown(
     label: String,
-    options: List<String>,
+    options: List<String>, // 선택지
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -745,6 +759,7 @@ private fun PhotoUploadBox(
     }
 }
 
+// 하나의 메뉴 아이템 카드
 @Composable
 private fun MenuItemCard(
     index: Int,
@@ -784,12 +799,12 @@ private fun MenuItemCard(
                     )
                 }
                 Spacer(Modifier.width(8.dp))
-                CategoryDropdown(
+                CategoryDropdown( // 메뉴 대분류
                     selected = category,
                     onSelect = { onChange(draft.copy(categoryId = it.id)) },
                 )
                 Spacer(Modifier.weight(1f))
-                if (canDelete) {
+                if (canDelete) { // 메뉴 종류 2개 이상 존재할 때부터 삭제 가능
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.size(32.dp),
@@ -814,7 +829,7 @@ private fun MenuItemCard(
                         .background(BrandOrangeSoft),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(text = category.emoji, fontSize = 18.sp)
+                    Text(text = category.emoji, fontSize = 18.sp) // 대분류에 대한 이모지
                 }
                 Spacer(Modifier.width(10.dp))
                 OutlinedTextField(
@@ -832,7 +847,7 @@ private fun MenuItemCard(
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
-                    value = draft.price,
+                    value = draft.price, // 가격 입력
                     onValueChange = { input ->
                         onChange(draft.copy(price = input.filter { it.isDigit() }))
                     },
@@ -844,7 +859,7 @@ private fun MenuItemCard(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
                 OutlinedTextField(
-                    value = draft.stock,
+                    value = draft.stock, // 재고 입력
                     onValueChange = { input ->
                         onChange(draft.copy(stock = input.filter { it.isDigit() }))
                     },
@@ -905,6 +920,7 @@ private fun CategoryDropdown(
     }
 }
 
+// 메뉴 아이템 추가 버튼
 @Composable
 private fun AddMenuButton(onClick: () -> Unit) {
     Box(
@@ -937,6 +953,7 @@ private fun AddMenuButton(onClick: () -> Unit) {
     }
 }
 
+// 포커스 되면 오렌지 색 테두리
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun brandFieldColors() = OutlinedTextFieldDefaults.colors(
@@ -945,9 +962,11 @@ private fun brandFieldColors() = OutlinedTextFieldDefaults.colors(
     cursorColor = BrandOrange,
 )
 
+// 밀리초를 활용한 MenuDraftId 표현
 private fun newDraftId(): String =
     System.currentTimeMillis().toString() + "-" + (0..9999).random()
 
+// 카페 정보 업로드용 request
 private fun buildCreateCafeRequest(
     cafeName: String,
     addressCity: String,
