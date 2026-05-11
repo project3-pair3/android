@@ -7,6 +7,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface CafeApi {
+    // 메인 화면 - 카페 정보 get
     @GET("cafes")
     suspend fun listCafes( // 4개 param 모두 not null
         @Query("categoryId") categoryId: Int,
