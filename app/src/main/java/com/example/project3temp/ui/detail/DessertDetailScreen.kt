@@ -77,11 +77,11 @@ fun DessertDetailScreen(
     onClose: () -> Unit,
 ) {
     var uiState by remember { mutableStateOf<DetailUiState>(DetailUiState.Loading) }
-    var reloadKey by remember { mutableIntStateOf(0) }
+    var reloadKey by remember { mutableIntStateOf(0) } // error handling - LaunchedEffect
 
     LaunchedEffect(cafeId, reloadKey) {
         uiState = DetailUiState.Loading
-        uiState = runCatching { NetworkModule.cafeApi.getMenus(cafeId) }
+        uiState = runCatching { NetworkModule.cafeApi.getMenus(cafeId) } // /cafes/{id}/menus GET API
             .fold(
                 onSuccess = { DetailUiState.Content(it) },
                 onFailure = { DetailUiState.Error(it.toUserMessage()) },
@@ -93,20 +93,20 @@ fun DessertDetailScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    val cafe = (uiState as? DetailUiState.Content)?.cafe
+                    val cafe = (uiState as? DetailUiState.Content)?.cafe // 카페 이름
                     val areaLabel = cafe?.let {
                         listOfNotNull(it.addressCity, it.addressDistrict)
                             .filter { part -> part.isNotBlank() }
                             .joinToString(" ")
                             .ifBlank { null }
                     }
-                    DetailTitle(
+                    DetailTitle( // "시", "구" 제외 상세 주소
                         storeName = cafeName,
                         areaLabel = areaLabel,
                         addressDetail = cafe?.addressDetail,
                     )
                 },
-                actions = {
+                actions = { // 닫기
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "닫기")
                     }
@@ -124,7 +124,7 @@ fun DessertDetailScreen(
                 DetailUiState.Loading -> LoadingView()
                 is DetailUiState.Error -> ErrorView(
                     message = state.message,
-                    onRetry = { reloadKey++ },
+                    onRetry = { reloadKey++ }, // "다시 시도" 버튼 누르고 LaunchedEffect 실행을 위한 더미 데이터
                 )
                 is DetailUiState.Content -> CafeContent(cafe = state.cafe)
             }
@@ -166,7 +166,7 @@ private fun ErrorView(message: String, onRetry: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = BrandOrange),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text("다시 시도", color = Color.White)
+            Text("다시 시도", color = Color.White) // 리컴포저블 발생
         }
     }
 }
@@ -184,7 +184,24 @@ private fun CafeContent(cafe: CafeMenusResponse) {
             )
         }
     }
+
     val groupedByCategory = menuItems.groupBy { it.typeId }.toList()
+
+    // typeId (메뉴 대분류 아이디) 로 그룹 바이
+    // 형태 : List<Pair<Int, List<MenuItem>>>
+    /* ex)
+
+    listOf(
+      1 to listOf(
+          MenuItem("1-0", 1, "오레오",   3000, 20),
+          MenuItem("1-1", 1, "군옥수수", 3500, 25),
+      ),
+      2 to listOf(
+          MenuItem("1-2", 2, "솔티카라멜", 2500, 10),
+          MenuItem("1-3", 2, "무화과",     3000, 15),
+      ),
+  )   */
+
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -199,6 +216,7 @@ private fun CafeContent(cafe: CafeMenusResponse) {
             )
         }
 
+        // HH:MM ~ HH:MM
         formatHours(cafe.open, cafe.close)?.let { hours ->
             item {
                 Text(
@@ -211,6 +229,7 @@ private fun CafeContent(cafe: CafeMenusResponse) {
             }
         }
 
+        // description 없으면 "No Description" 출력
         item {
             val hasDescription = !cafe.description.isNullOrBlank()
             Text(
@@ -221,6 +240,7 @@ private fun CafeContent(cafe: CafeMenusResponse) {
             )
         }
 
+        // group by 아이템들(메뉴) 순회, 출력
         groupedByCategory.forEach { (typeId, items) ->
             val category = Categories.byTypeId(typeId)
             item(key = "header-$typeId") {
@@ -235,7 +255,7 @@ private fun CafeContent(cafe: CafeMenusResponse) {
     }
 }
 
-// 메인 카드 클릭 - 상세 페이지 - 타이틀 바
+// 상세 페이지 - 타이틀 바
 @Composable
 private fun DetailTitle(storeName: String, areaLabel: String?, addressDetail: String?) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -246,7 +266,7 @@ private fun DetailTitle(storeName: String, areaLabel: String?, addressDetail: St
                 .background(BrandOrangeSoft),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "🍰", fontSize = 20.sp)
+            Text(text = "🍰", fontSize = 20.sp) // 기본 이모지
         }
         Spacer(Modifier.width(10.dp))
         Column {
