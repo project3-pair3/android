@@ -19,10 +19,9 @@ interface CafeApi {
     @GET("cafes/{id}/menus")
     suspend fun getMenus(@Path("id") cafeId: Int): CafeMenusResponse
 
-    // 메뉴와 함께 카페 등록
-    @POST("cafes/{id}/menus")
-    suspend fun createMenus(
-        @Path("id") cafeId: Int,
-        @Body body: CreateMenusRequest,
-    )
+    // 신규 카페 등록 (메뉴 포함)
+    @POST("cafes/menus")
+    suspend fun createCafeWithMenu(
+        @Body body: CreateCafeRequest,
+    ): CafeMenusResponse
 }

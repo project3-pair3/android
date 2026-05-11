@@ -26,11 +26,17 @@ data class MenuItemDto(
 )
 
 
-// 메뉴와 함께 카페 정보 등록
+// 신규 카페 등록 (POST /cafes/menu) - 카페 정보 + 메뉴를 한 번에 생성
 @Serializable
-data class CreateMenusRequest(
+data class CreateCafeRequest(
+    val cafeName: String,
+    val addressCity: String,
+    val addressDistrict: String,
+    val addressDetail: String,
+    val description: String? = null,
+    val open: String,   // ISO 8601 datetime (예: "2026-05-11T09:00:00")
+    val close: String,  // ISO 8601 datetime
     val imageUrl: String,
-    val description: String,
     val menu: List<MenuItemDto>,
 )
 

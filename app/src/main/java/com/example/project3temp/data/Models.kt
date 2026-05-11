@@ -19,6 +19,7 @@ object Categories {
     const val ALL_ID = "all"
     const val ALL_TYPE_ID = 0
 
+    // 디저트 대분류
     val list: List<DessertCategory> = listOf(
         DessertCategory(ALL_ID, ALL_TYPE_ID, "전체", "🍰"),
         DessertCategory("cake", 1, "케이크", "🎂"),
@@ -37,6 +38,7 @@ object Categories {
         list.firstOrNull { it.typeId == typeId } ?: list.first()
 }
 
+// 지역 필터링 - "구"
 object Districts {
     const val ALL_LABEL = "전체"
 
@@ -53,9 +55,10 @@ object Districts {
     )
 }
 
+// 정렬 기준
 object ListingTypes {
-    const val BASIC = "basic"
-    const val RECENTLY_UPDATED = "recentlyUpdated"
+    const val BASIC = "basic" // 기본 - db 순서 (또는 가나다 순으로 변경 가능)
+    const val RECENTLY_UPDATED = "recentlyUpdated" // 업데이트 순 - 최근 업데이트를 먼저 보여줌
 
     data class Option(val value: String, val label: String)
 

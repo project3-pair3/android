@@ -210,21 +210,14 @@ private fun CafeContent(cafe: CafeMenusResponse) {
             }
         }
 
-        if (!cafe.description.isNullOrBlank()) {
-            item {
-                Text(
-                    text = cafe.description,
-                    fontSize = 14.sp,
-                    color = Color.DarkGray,
-                    modifier = Modifier.padding(
-                        horizontal = 16.dp,
-                        vertical = if (formatHours(cafe.open, cafe.close) == null) 16.dp else 0.dp,
-                    ),
-                )
-                Spacer(Modifier.height(16.dp))
-            }
-        } else {
-            item { Spacer(Modifier.height(8.dp)) }
+        item {
+            val hasDescription = !cafe.description.isNullOrBlank()
+            Text(
+                text = if (hasDescription) cafe.description!! else "No Description",
+                fontSize = 14.sp,
+                color = if (hasDescription) Color.DarkGray else Color.Gray,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            )
         }
 
         groupedByCategory.forEach { (typeId, items) ->

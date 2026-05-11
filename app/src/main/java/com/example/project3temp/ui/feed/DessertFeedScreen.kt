@@ -33,6 +33,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -67,9 +70,13 @@ import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
 import com.example.project3temp.ui.theme.DistrictChipBg
 import com.example.project3temp.ui.theme.SoldOutRed
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+// 현재 "시"는 "서울"만 사용 - 추 후 확장 가능
 private const val FIXED_CITY = "서울"
 
+// 피드 화면이 가질 수 있는 상태 3가지 - 로딩, 성공, 에러
 private sealed interface FeedUiState {
     data object Loading : FeedUiState
     data class Content(val items: List<CafeListItem>) : FeedUiState
@@ -79,14 +86,31 @@ private sealed interface FeedUiState {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DessertFeedScreen(
+    snackbarMessage: String? = null,
+    onSnackbarShown: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onCardClick: (Int, String) -> Unit = { _, _ -> },
 ) {
-    var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) }
-    var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) }
-    var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) }
-    var uiState by remember { mutableStateOf<FeedUiState>(FeedUiState.Loading) }
-    var reloadKey by remember { mutableIntStateOf(0) }
+    var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) } // 메뉴 대분류 필터링
+    var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) } // 지역 "구" 필터링
+    var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) } // 정렬 기준
+    var uiState by remember { mutableStateOf<FeedUiState>(FeedUiState.Loading) } // 로딩중
+    var reloadKey by remember { mutableIntStateOf(0) } // 에러 화면에서 LaunchEffect 재실행을 위한 더미 데이터
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 외부에서 메시지가 들어오면 3초간 보여주고 자동으로 숨김
+    LaunchedEffect(snackbarMessage) {
+        val msg = snackbarMessage ?: return@LaunchedEffect
+        val job = launch {
+            snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Indefinite)
+        }
+        try {
+            delay(3000)
+        } finally {
+            job.cancel()
+            onSnackbarShown()
+        }
+    }
 
     LaunchedEffect(selectedCategoryId, selectedDistrict, selectedListingType, reloadKey) {
         uiState = FeedUiState.Loading
@@ -128,24 +152,25 @@ fun DessertFeedScreen(
         floatingActionButton = {
             AddFab(onClick = onAddClick)
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            CategoryRow(
-                categories = Categories.list,
-                selectedId = selectedCategoryId,
-                onSelect = { selectedCategoryId = it },
+            CategoryRow( // 대분류 카테고리 필터링
+                categories = Categories.list, // "전체"를 포함한 메뉴 대분류
+                selectedId = selectedCategoryId, // 선택중인 카테고리
+                onSelect = { selectedCategoryId = it }, // 상태 저장
             )
-            FilterRow(
-                selectedDistrict = selectedDistrict,
+            FilterRow( // 지역 필터링과 정렬, "시"는 서울로 고정 // todo 서울 이외의 "시" 적용
+                selectedDistrict = selectedDistrict, // "구" 필터링
                 onDistrictChange = { selectedDistrict = it },
-                selectedListingType = selectedListingType,
+                selectedListingType = selectedListingType, // 정렬 방식
                 onListingTypeChange = { selectedListingType = it },
             )
-            FeedHeader(
+            FeedHeader( // 오늘 업데이트 된 카페 수
                 count = (uiState as? FeedUiState.Content)?.items?.size ?: 0,
             )
             Box(modifier = Modifier.fillMaxSize()) {
@@ -153,7 +178,7 @@ fun DessertFeedScreen(
                     FeedUiState.Loading -> LoadingView()
                     is FeedUiState.Error -> ErrorView(
                         message = state.message,
-                        onRetry = { reloadKey++ },
+                        onRetry = { reloadKey++ }, // 다시 시도 버튼 -> 화면 재 렌더링을 위한 변수
                     )
                     is FeedUiState.Content -> if (state.items.isEmpty()) {
                         EmptyView()
@@ -166,6 +191,7 @@ fun DessertFeedScreen(
     }
 }
 
+// 메뉴 대분류 필터링
 @Composable
 private fun CategoryRow(
     categories: List<DessertCategory>,
@@ -186,6 +212,8 @@ private fun CategoryRow(
     }
 }
 
+
+// 메뉴 대분류 필터링 아이콘
 @Composable
 private fun CategoryItem(
     category: DessertCategory,
@@ -222,6 +250,7 @@ private fun CategoryItem(
     }
 }
 
+// "구" 필터링과 정렬 방식 선택
 @Composable
 private fun FilterRow(
     selectedDistrict: String,
@@ -236,14 +265,14 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        StaticChip(label = FIXED_CITY)
-        FilterChipDropdown(
+        StaticChip(label = FIXED_CITY) // 서울로 고정
+        FilterChipDropdown( // "구" 필터링
             label = selectedDistrict,
             options = Districts.seoul,
             onSelect = onDistrictChange,
         )
         Spacer(Modifier.weight(1f))
-        FilterChipDropdown(
+        FilterChipDropdown( // 정렬 방식
             label = ListingTypes.labelOf(selectedListingType),
             options = ListingTypes.options.map { it.label },
             onSelect = { selected ->
@@ -270,7 +299,7 @@ private fun StaticChip(label: String) {
 @Composable
 private fun FilterChipDropdown(
     label: String,
-    options: List<String>,
+    options: List<String>, // ListingType 2개
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -371,14 +400,14 @@ private fun ErrorView(message: String, onRetry: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = BrandOrange),
             shape = RoundedCornerShape(12.dp),
         ) {
-            Text("다시 시도", color = Color.White)
+            Text("다시 시도", color = Color.White) // 누르면 LaunchedEffect 실행
         }
     }
 }
 
 @Composable
 private fun DessertGrid(
-    items: List<CafeListItem>,
+    items: List<CafeListItem>, // 전체 카드
     onCardClick: (Int, String) -> Unit,
 ) {
     LazyVerticalGrid(
@@ -394,6 +423,7 @@ private fun DessertGrid(
     }
 }
 
+// 하나의 개별 카드
 @Composable
 private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
     Surface(
@@ -416,11 +446,12 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
             )
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = cafe.cafeName,
+                    text = cafe.cafeName, // 카페 이름
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                 )
+                // 운영 시간
                 formatHours(cafe.open, cafe.close)?.let { hours ->
                     Spacer(Modifier.height(2.dp))
                     Text(
@@ -431,6 +462,7 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
                     )
                 }
                 Spacer(Modifier.height(2.dp))
+                // 시 - 구 위치 표현
                 Text(
                     text = listOfNotNull(cafe.addressCity, cafe.addressDistrict)
                         .filter { it.isNotBlank() }
@@ -440,6 +472,7 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
                     maxLines = 1,
                 )
                 Spacer(Modifier.height(6.dp))
+                // 총 재고 수
                 Text(
                     text = "오늘 ${cafe.totalCount}개",
                     fontSize = 13.sp,
@@ -451,6 +484,8 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
     }
 }
 
+// todo 로그인 유저에게만 활성화
+// 재고 등록 버튼
 @Composable
 private fun AddFab(onClick: () -> Unit) {
     Box(

@@ -13,8 +13,6 @@ import com.example.project3temp.ui.detail.DessertDetailScreen
 import com.example.project3temp.ui.feed.DessertFeedScreen
 import com.example.project3temp.ui.theme.Project3tempTheme
 
-private const val MY_CAFE_ID = 1
-
 private sealed interface Screen {
     data object Feed : Screen
     data object Compose : Screen
@@ -28,9 +26,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             Project3tempTheme {
                 var screen by remember { mutableStateOf<Screen>(Screen.Feed) }
+                // Feed에 띄울 스낵바 메시지 (예: 카페 등록 성공 후)
+                var feedMessage by remember { mutableStateOf<String?>(null) }
 
                 when (val current = screen) {
                     is Screen.Feed -> DessertFeedScreen(
+                        snackbarMessage = feedMessage,
+                        onSnackbarShown = { feedMessage = null },
                         onAddClick = { screen = Screen.Compose },
                         onCardClick = { cafeId, cafeName ->
                             screen = Screen.Detail(cafeId, cafeName)
@@ -38,8 +40,11 @@ class MainActivity : ComponentActivity() {
                     )
 
                     is Screen.Compose -> ComposeScreen(
-                        cafeId = MY_CAFE_ID,
                         onClose = { screen = Screen.Feed },
+                        onSubmitSuccess = {
+                            feedMessage = "카페가 등록되었어요"
+                            screen = Screen.Feed
+                        },
                     )
 
                     is Screen.Detail -> DessertDetailScreen(
