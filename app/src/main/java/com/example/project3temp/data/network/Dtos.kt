@@ -2,6 +2,7 @@ package com.example.project3temp.data.network
 
 import kotlinx.serialization.Serializable
 
+// 하나의 카페 (게시물)에 대한 정보
 @Serializable
 data class CafeMenusResponse(
     val cafeId: Int,
@@ -10,8 +11,8 @@ data class CafeMenusResponse(
     val addressDistrict: String? = null,
     val addressDetail: String? = null,
     val description: String? = null,
-    val open: String? = null,
-    val close: String? = null,
+    val open: String? = null,   // 백엔드 응답: "HH:mm" 형식 (예: "09:00")
+    val close: String? = null,  // 백엔드 응답: "HH:mm" 형식
     val imageUrl: String? = null,
     val menu: List<MenuItemDto> = emptyList(),
 )
@@ -34,8 +35,8 @@ data class CreateCafeRequest(
     val addressDistrict: String,
     val addressDetail: String,
     val description: String? = null,
-    val open: String,   // ISO 8601 datetime (예: "2026-05-11T09:00:00")
-    val close: String,  // ISO 8601 datetime
+    val open: String,   // "HH:mm:ss" 형식, 초는 항상 00 (예: "09:00:00")
+    val close: String,  // "HH:mm:ss" 형식, 초는 항상 00
     val imageUrl: String,
     val menu: List<MenuItemDto>,
 )
@@ -48,8 +49,8 @@ data class CafeListItem(
     val addressCity: String? = null,
     val addressDistrict: String? = null,
     val addressDetail: String? = null,
-    val open: String? = null,
-    val close: String? = null,
+    val open: String? = null,   // 백엔드 응답: "HH:mm" 형식
+    val close: String? = null,  // 백엔드 응답: "HH:mm" 형식
     val imageUrl: String? = null,
     val totalCount: Int = 0,
     val createdAt: String? = null,
