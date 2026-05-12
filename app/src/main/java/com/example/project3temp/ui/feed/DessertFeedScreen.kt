@@ -38,6 +38,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -91,6 +92,7 @@ fun DessertFeedScreen(
     onSnackbarShown: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onCardClick: (Int, String) -> Unit = { _, _ -> },
+    onLoginClick: () -> Unit = {}, // 우측 상단 "로그인" 버튼
 ) {
     var selectedCategory by remember { mutableStateOf<DessertCategory?>(null) } // 메뉴 대분류 필터링 (null = 전체)
     var selectedCity by remember { mutableStateOf(DEFAULT_CITY) } // 지역 "시" 필터링
@@ -145,6 +147,16 @@ fun DessertFeedScreen(
                             fontSize = 11.sp,
                             color = Color.Gray,
                             fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                },
+                actions = { // 우측 상단 "로그인" 버튼
+                    TextButton(onClick = onLoginClick) {
+                        Text(
+                            text = "로그인",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandOrange,
                         )
                     }
                 },

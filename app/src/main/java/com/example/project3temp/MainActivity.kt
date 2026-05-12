@@ -12,11 +12,15 @@ import com.example.project3temp.ui.compose.ComposeScreen
 import com.example.project3temp.ui.detail.DessertDetailScreen
 import com.example.project3temp.ui.feed.DessertFeedScreen
 import com.example.project3temp.ui.theme.Project3tempTheme
+import com.example.project3temp.ui.user.LoginScreen
+import com.example.project3temp.ui.user.SignUpScreen
 
 private sealed interface Screen {
     data object Feed : Screen
     data object Compose : Screen
     data class Detail(val cafeId: Int, val cafeName: String) : Screen
+    data object Login : Screen
+    data object SignUp : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -31,12 +35,13 @@ class MainActivity : ComponentActivity() {
 
                 when (val current = screen) {
                     is Screen.Feed -> DessertFeedScreen(
-                        snackbarMessage = feedMessage,
+                        snackbarMessage = feedMessage, // 카페 작성 완료 후 메시지
                         onSnackbarShown = { feedMessage = null },
-                        onAddClick = { screen = Screen.Compose },
-                        onCardClick = { cafeId, cafeName ->
+                        onAddClick = { screen = Screen.Compose }, // 카페 작성 페이지
+                        onCardClick = { cafeId, cafeName -> // 상세 페이지
                             screen = Screen.Detail(cafeId, cafeName)
                         },
+                        onLoginClick = { screen = Screen.Login }, // 로그인 스크린
                     )
 
                     is Screen.Compose -> ComposeScreen(
@@ -51,6 +56,17 @@ class MainActivity : ComponentActivity() {
                         cafeId = current.cafeId,
                         cafeName = current.cafeName,
                         onClose = { screen = Screen.Feed },
+                    )
+
+                    Screen.Login -> LoginScreen(
+                        onClose = { screen = Screen.Feed }, // 메인 페이지로
+                        onSignUpClick = { screen = Screen.SignUp }, // 회원가입 페이지로
+                        onLoginSuccess = { screen = Screen.Feed }, // TODO: 로그인 성공 후 동작 사용자가 결정
+                    )
+
+                    Screen.SignUp -> SignUpScreen(
+                        onBack = { screen = Screen.Login }, // 로그인 페이지로
+                        onSignUpSuccess = { screen = Screen.Login }, // 회원가입 완료 → 로그인 화면으로
                     )
                 }
             }
