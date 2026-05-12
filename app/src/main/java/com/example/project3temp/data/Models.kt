@@ -1,11 +1,23 @@
 package com.example.project3temp.data
 
-data class DessertCategory(
-    val id: String,
+// 디저트 대분류 - 백엔드와 typeId(Int)로 통신
+enum class DessertCategory(
     val typeId: Int,
     val label: String,
     val emoji: String,
-)
+) {
+    CAKE(1, "케이크", "🎂"),
+    MACARON(2, "마카롱", "🍬"),
+    TART(3, "타르트", "🥧"),
+    PUDDING(4, "푸딩", "🍮"),
+    COOKIE(5, "쿠키", "🍪");
+
+    companion object {
+        // 백엔드가 잘못된 typeId를 주면 null - 호출 측에서 에러 처리
+        fun byTypeId(typeId: Int): DessertCategory? =
+            entries.firstOrNull { it.typeId == typeId }
+    }
+}
 
 data class MenuItem(
     val id: String,
@@ -15,27 +27,11 @@ data class MenuItem(
     val stock: Int? = null,
 )
 
+// 카테고리 필터링 UI에서 쓰는 "전체" 의사 카테고리
 object Categories {
-    const val ALL_ID = "all"
-    const val ALL_TYPE_ID = 0
-
-    // 디저트 대분류
-    val list: List<DessertCategory> = listOf(
-        DessertCategory(ALL_ID, ALL_TYPE_ID, "전체", "🍰"),
-        DessertCategory("cake", 1, "케이크", "🎂"),
-        DessertCategory("macaron", 2, "마카롱", "🍬"),
-        DessertCategory("tart", 3, "타르트", "🥧"),
-        DessertCategory("pudding", 4, "푸딩", "🍮"),
-        DessertCategory("cookie", 5, "쿠키", "🍪"),
-    )
-
-    val selectable: List<DessertCategory> = list.filter { it.id != ALL_ID }
-
-    fun byId(id: String): DessertCategory =
-        list.firstOrNull { it.id == id } ?: list.first()
-
-    fun byTypeId(typeId: Int): DessertCategory =
-        list.firstOrNull { it.typeId == typeId } ?: list.first()
+    const val ALL_TYPE_ID = 0 // 백엔드 필터 API에 "전체" 의미로 보내는 값
+    const val ALL_LABEL = "전체"
+    const val ALL_EMOJI = "🍰"
 }
 
 // 지역 필터링 - "구"
