@@ -33,8 +33,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +49,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -81,8 +78,6 @@ import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
 import com.example.project3temp.ui.theme.DistrictChipBg
 import kotlinx.coroutines.launch
-import java.util.Calendar
-import java.util.TimeZone
 
 // addressCity 드롭다운에 쓸 실제 시 목록 (기본 서울)
 private const val CITY_SEOUL = "서울"
@@ -99,42 +94,23 @@ private data class MenuItemDraft(
     val stock: String = "", // nullable
 )
 
-// 날짜와 시간을 따로 보관 (DatePicker → TimePicker 순서로 입력 받음)
-// todo 시간만 입력받도록 수정
-private data class DateTimeInput(
-    val dateMillis: Long? = null, // DatePickerState가 주는 UTC 자정 millis
+// 영업 시간(시:분) 입력 보관
+private data class TimeInput(
     val hour: Int? = null,
     val minute: Int? = null,
 ) {
-    fun isComplete(): Boolean =
-        dateMillis != null && hour != null && minute != null
+    fun isComplete(): Boolean = hour != null && minute != null
 
-    fun toIsoString(): String? {
+    // 서버로 보낼 "HH:mm:ss" 문자열 (초는 항상 00)
+    fun toApiString(): String? {
         if (!isComplete()) return null
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            timeInMillis = dateMillis!!
-        }
-        return "%04d-%02d-%02dT%02d:%02d:00".format(
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH),
-            hour,
-            minute,
-        )
+        return "%02d:%02d:00".format(hour, minute)
     }
 
+    // 화면 표시용 "HH:mm"
     fun displayString(): String {
         if (!isComplete()) return ""
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            timeInMillis = dateMillis!!
-        }
-        return "%04d-%02d-%02d %02d:%02d".format(
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH),
-            hour,
-            minute,
-        )
+        return "%02d:%02d".format(hour, minute)
     }
 }
 
@@ -149,8 +125,8 @@ fun ComposeScreen(
     var addressCity by remember { mutableStateOf(CITY_SEOUL) }
     var addressDistrict by remember { mutableStateOf<String?>(null) }
     var addressDetail by remember { mutableStateOf("") }
-    var openInput by remember { mutableStateOf(DateTimeInput()) }
-    var closeInput by remember { mutableStateOf(DateTimeInput()) }
+    var openInput by remember { mutableStateOf(TimeInput()) }
+    var closeInput by remember { mutableStateOf(TimeInput()) }
     var imageUri by remember { mutableStateOf<String?>(null) }
     var intro by remember { mutableStateOf("") }
     var menuItems by remember {
@@ -241,8 +217,7 @@ fun ComposeScreen(
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
-            // 영업 시간 - 필수
-            // todo 시간만 받도록 추 후 수정
+            // 영업 시간 (시:분) - 필수
             HoursSection(
                 open = openInput,
                 onOpenChange = { openInput = it },
@@ -286,8 +261,8 @@ fun ComposeScreen(
                         addressDistrict = addressDistrict ?: return@Button,
                         addressDetail = addressDetail,
                         intro = intro,
-                        openIso = openInput.toIsoString() ?: return@Button,
-                        closeIso = closeInput.toIsoString() ?: return@Button,
+                        openTime = openInput.toApiString() ?: return@Button,
+                        closeTime = closeInput.toApiString() ?: return@Button,
                         imageUrl = imageUri ?: return@Button,
                         drafts = menuItems,
                     )
@@ -412,10 +387,10 @@ private fun AddressSection(
 
 @Composable
 private fun HoursSection(
-    open: DateTimeInput,
-    onOpenChange: (DateTimeInput) -> Unit,
-    close: DateTimeInput,
-    onCloseChange: (DateTimeInput) -> Unit,
+    open: TimeInput,
+    onOpenChange: (TimeInput) -> Unit,
+    close: TimeInput,
+    onCloseChange: (TimeInput) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -425,13 +400,13 @@ private fun HoursSection(
         SectionLabel(label = "영업 시간", required = true)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DateTimeField( // open
+            TimeField( // open
                 label = "오픈",
                 value = open,
                 onChange = onOpenChange,
                 modifier = Modifier.weight(1f),
             )
-            DateTimeField( // close
+            TimeField( // close
                 label = "마감",
                 value = close,
                 onChange = onCloseChange,
@@ -595,26 +570,23 @@ private fun ChipDropdown(
     }
 }
 
-// 날짜+시간 입력 필드. 탭하면 DatePicker → TimePicker 순서로 다이얼로그가 뜸
+// 시:분 입력 필드. 탭하면 TimePicker 다이얼로그가 뜸
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateTimeField(
+private fun TimeField(
     label: String,
-    value: DateTimeInput,
-    onChange: (DateTimeInput) -> Unit,
+    value: TimeInput,
+    onChange: (TimeInput) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
-    // DatePicker에서 고른 날짜를 TimePicker로 넘기기 위한 임시 보관
-    var pendingDateMillis by remember { mutableStateOf<Long?>(null) }
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .border(1.dp, Color(0xFFE2D9CF), RoundedCornerShape(12.dp))
             .background(Color.White)
-            .clickable { showDatePicker = true }
+            .clickable { showTimePicker = true }
             .padding(horizontal = 12.dp, vertical = 14.dp),
     ) {
         Column {
@@ -625,32 +597,11 @@ private fun DateTimeField(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = value.displayString().ifBlank { "YYYY-MM-DD HH:mm" },
+                text = value.displayString().ifBlank { "HH:mm" },
                 fontSize = 14.sp,
                 color = if (value.isComplete()) Color.Black else Color.Gray,
                 fontWeight = FontWeight.Medium,
             )
-        }
-    }
-
-    if (showDatePicker) {
-        val state = rememberDatePickerState(
-            initialSelectedDateMillis = value.dateMillis ?: System.currentTimeMillis(),
-        )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingDateMillis = state.selectedDateMillis
-                    showDatePicker = false
-                    showTimePicker = true
-                }) { Text("다음") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("취소") }
-            },
-        ) {
-            DatePicker(state = state)
         }
     }
 
@@ -671,8 +622,7 @@ private fun DateTimeField(
             confirmButton = {
                 TextButton(onClick = {
                     onChange(
-                        DateTimeInput(
-                            dateMillis = pendingDateMillis ?: value.dateMillis,
+                        TimeInput(
                             hour = state.hour,
                             minute = state.minute,
                         ),
@@ -973,8 +923,8 @@ private fun buildCreateCafeRequest(
     addressDistrict: String,
     addressDetail: String,
     intro: String,
-    openIso: String,
-    closeIso: String,
+    openTime: String,
+    closeTime: String,
     imageUrl: String,
     drafts: List<MenuItemDraft>,
 ): CreateCafeRequest = CreateCafeRequest(
@@ -983,8 +933,8 @@ private fun buildCreateCafeRequest(
     addressDistrict = addressDistrict,
     addressDetail = addressDetail.trim(),
     description = intro.trim().ifBlank { null },
-    open = openIso,
-    close = closeIso,
+    open = openTime,
+    close = closeTime,
     imageUrl = imageUrl,
     menu = drafts.map { d ->
         MenuItemDto(
