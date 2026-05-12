@@ -43,6 +43,8 @@ fun LoginScreen(
 ) {
     var userId by remember { mutableStateOf("") } // 아이디 입력 상태
     var password by remember {mutableStateOf("") } // 비밀번호 입력 상태
+    var nickname by remember {mutableStateOf("") } // 닉네임 입력 상태
+
     // TODO: 로그인 진행중 상태 (isSubmitting)
     // TODO: 에러 메시지 표시용 SnackbarHostState
 
@@ -85,7 +87,17 @@ fun LoginScreen(
                 placeholder = { Text("비밀번호를 입력하세요")},
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
+            )
 
+            // 닉네임 입력
+            OutlinedTextField(
+                value = nickname,
+                onValueChange = {nickname = it},
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("닉네임")},
+                placeholder = { Text("닉네임을 입력하세요")},
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
             )
 
             Spacer(Modifier.height(24.dp))
@@ -96,7 +108,7 @@ fun LoginScreen(
                     // TODO: 입력 검증 + 로그인 API 호출. 성공시 onLoginSuccess() 호출
                     onLoginSuccess()
                 },
-                enabled = userId.isNotBlank() && password.isNotBlank(),
+                enabled = userId.isNotBlank() && password.isNotBlank() && nickname.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
