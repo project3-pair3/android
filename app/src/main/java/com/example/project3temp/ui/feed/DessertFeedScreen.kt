@@ -92,7 +92,7 @@ fun DessertFeedScreen(
     onAddClick: () -> Unit = {},
     onCardClick: (Int, String) -> Unit = { _, _ -> },
 ) {
-    var selectedCategoryId by remember { mutableStateOf(Categories.ALL_ID) } // 메뉴 대분류 필터링
+    var selectedCategory by remember { mutableStateOf<DessertCategory?>(null) } // 메뉴 대분류 필터링 (null = 전체)
     var selectedCity by remember { mutableStateOf(DEFAULT_CITY) } // 지역 "시" 필터링
     var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) } // 지역 "구" 필터링
     var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) } // 정렬 기준
@@ -114,11 +114,11 @@ fun DessertFeedScreen(
         }
     }
 
-    LaunchedEffect(selectedCategoryId, selectedCity, selectedDistrict, selectedListingType, reloadKey) {
+    LaunchedEffect(selectedCategory, selectedCity, selectedDistrict, selectedListingType, reloadKey) {
         uiState = FeedUiState.Loading
         uiState = runCatching {
             NetworkModule.cafeApi.listCafes( // /cafes GET
-                categoryId = Categories.byId(selectedCategoryId).typeId,
+                categoryId = selectedCategory?.typeId ?: Categories.ALL_TYPE_ID,
                 addressCity = selectedCity,
                 addressDistrict = selectedDistrict,
                 listingType = selectedListingType,
@@ -162,9 +162,8 @@ fun DessertFeedScreen(
                 .padding(padding),
         ) {
             CategoryRow( // 대분류 카테고리 필터링
-                categories = Categories.list, // "전체"를 포함한 메뉴 대분류
-                selectedId = selectedCategoryId, // 선택중인 카테고리
-                onSelect = { selectedCategoryId = it }, // 상태 저장
+                selected = selectedCategory, // 선택중인 카테고리 (null = 전체)
+                onSelect = { selectedCategory = it }, // 상태 저장
             )
             FilterRow( // 지역 필터링과 정렬 // todo 서울 이외의 "시" 추가
                 selectedCity = selectedCity, // "시" 필터링
@@ -195,22 +194,30 @@ fun DessertFeedScreen(
     }
 }
 
-// 메뉴 대분류 필터링
+// 메뉴 대분류 필터링 - "전체" 칩 + enum 카테고리 칩들
 @Composable
 private fun CategoryRow(
-    categories: List<DessertCategory>, // 메뉴 대분류 리스트
-    selectedId: String,
-    onSelect: (String) -> Unit,
+    selected: DessertCategory?, // null = 전체
+    onSelect: (DessertCategory?) -> Unit,
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        items(categories, key = { it.id }) { category ->
+        item(key = "all") { // "전체" 의사 카테고리
             CategoryItem(
-                category = category,
-                selected = category.id == selectedId,
-                onClick = { onSelect(category.id) },
+                emoji = Categories.ALL_EMOJI,
+                label = Categories.ALL_LABEL,
+                selected = selected == null,
+                onClick = { onSelect(null) },
+            )
+        }
+        items(DessertCategory.entries, key = { it.name }) { category ->
+            CategoryItem(
+                emoji = category.emoji,
+                label = category.label,
+                selected = category == selected,
+                onClick = { onSelect(category) },
             )
         }
     }
@@ -220,7 +227,8 @@ private fun CategoryRow(
 // 메뉴 대분류 필터링 1개 아이콘
 @Composable
 private fun CategoryItem(
-    category: DessertCategory,
+    emoji: String,
+    label: String,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -242,11 +250,11 @@ private fun CategoryItem(
                 .background(bg),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = category.emoji, fontSize = 24.sp)
+            Text(text = emoji, fontSize = 24.sp)
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = category.label,
+            text = label,
             fontSize = 13.sp,
             fontWeight = labelWeight,
             color = labelColor,

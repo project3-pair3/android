@@ -48,7 +48,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.project3temp.data.Categories
 import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.MenuItem
 import com.example.project3temp.data.network.CafeMenusResponse
@@ -242,12 +241,19 @@ private fun CafeContent(cafe: CafeMenusResponse) {
 
         // group by 아이템들(메뉴) 순회, 출력
         groupedByCategory.forEach { (typeId, items) ->
-            val category = Categories.byTypeId(typeId)
-            item(key = "header-$typeId") {
-                CategoryHeader(category = category)
-            }
-            items(items, key = { "menu-${it.id}" }) { item ->
-                MenuRow(category = category, item = item)
+            val category = DessertCategory.byTypeId(typeId)
+            if (category == null) {
+                // 백엔드가 알 수 없는 typeId를 내려준 경우 - 에러 메시지로 노출
+                item(key = "unknown-$typeId") {
+                    UnknownCategoryBlock(typeId = typeId, count = items.size)
+                }
+            } else {
+                item(key = "header-$typeId") {
+                    CategoryHeader(category = category)
+                }
+                items(items, key = { "menu-${it.id}" }) { item ->
+                    MenuRow(category = category, item = item)
+                }
             }
         }
 
@@ -309,6 +315,26 @@ private fun DetailTitle(storeName: String, areaLabel: String?, addressDetail: St
                 }
             }
         }
+    }
+}
+
+// 알 수 없는 typeId가 백엔드에서 내려왔을 때 보여주는 에러 블록
+@Composable
+private fun UnknownCategoryBlock(typeId: Int, count: Int) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    ) {
+        Text(text = "⚠️", fontSize = 14.sp)
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = "알 수 없는 카테고리 (typeId=$typeId · 메뉴 ${count}개 숨김)",
+            fontSize = 13.sp,
+            color = SoldOutRed,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
 

@@ -66,7 +66,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.project3temp.data.Categories
 import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.Districts
 import com.example.project3temp.data.network.CreateCafeRequest
@@ -88,7 +87,7 @@ private val districtOptions: List<String> = Districts.seoul.filter { it != Distr
 // 카페 메뉴 기본 정보
 private data class MenuItemDraft(
     val id: String,
-    val categoryId: String, // 대분류
+    val category: DessertCategory, // 대분류
     val name: String = "",
     val price: String = "", // nullable
     val stock: String = "", // nullable
@@ -134,7 +133,7 @@ fun ComposeScreen(
             listOf(
                 MenuItemDraft(
                     id = newDraftId(),
-                    categoryId = Categories.selectable.first().id,
+                    category = DessertCategory.entries.first(),
                 ),
             ),
         )
@@ -246,7 +245,7 @@ fun ComposeScreen(
                 onAdd = {
                     menuItems = menuItems + MenuItemDraft(
                         id = newDraftId(),
-                        categoryId = Categories.selectable.first().id,
+                        category = DessertCategory.entries.first(),
                     )
                 },
             )
@@ -442,7 +441,7 @@ private fun IntroSection(
             },
             shape = RoundedCornerShape(12.dp),
             colors = brandFieldColors(),
-            maxLines = 3,
+            maxLines = 3, // 화면에 표시하는 최대 줄
         )
     }
 }
@@ -500,7 +499,7 @@ private fun MenuItemsSection(
     }
 }
 
-// ────────── 공통 컴포넌트 ──────────
+// *공통 컴포넌트*
 
 // 입력 세션 이름과 필수 여부
 @Composable
@@ -637,7 +636,7 @@ private fun TimeField(
     }
 }
 
-// ────────── 기존 컴포넌트 (사진/메뉴/카테고리 드롭다운) ──────────
+// *기존 컴포넌트 (사진/메뉴/카테고리 드롭다운)*
 
 @Composable
 private fun PhotoUploadBox(
@@ -718,7 +717,8 @@ private fun MenuItemCard(
     onChange: (MenuItemDraft) -> Unit,
     onDelete: () -> Unit,
 ) {
-    val category = Categories.byId(draft.categoryId)
+    //val category = Categories.byId(draft.categoryId)
+    val category = draft.category // enum 타입으로 바꾸면서
 
     Box(
         modifier = Modifier
@@ -751,7 +751,7 @@ private fun MenuItemCard(
                 Spacer(Modifier.width(8.dp))
                 CategoryDropdown( // 메뉴 대분류
                     selected = category,
-                    onSelect = { onChange(draft.copy(categoryId = it.id)) },
+                    onSelect = { onChange(draft.copy(category = it)) },
                 )
                 Spacer(Modifier.weight(1f))
                 if (canDelete) { // 메뉴 종류 2개 이상 존재할 때부터 삭제 가능
@@ -857,7 +857,7 @@ private fun CategoryDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            Categories.selectable.forEach { cat ->
+            DessertCategory.entries.forEach { cat ->
                 DropdownMenuItem(
                     text = { Text("${cat.emoji}  ${cat.label}") },
                     onClick = {
@@ -939,7 +939,7 @@ private fun buildCreateCafeRequest(
     menu = drafts.map { d ->
         MenuItemDto(
             itemName = d.name.trim(),
-            typeId = Categories.byId(d.categoryId).typeId,
+            typeId = d.category.typeId,
             cost = d.price.toIntOrNull() ?: 0,
             stock = d.stock.toIntOrNull() ?: 0,
         )
