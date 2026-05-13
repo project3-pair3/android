@@ -24,8 +24,8 @@ import com.example.project3temp.ui.theme.BrandOrange
 
 // 카페 등록 화면의 입력 섹션들
 
-// addressCity 드롭다운에 쓸 실제 시 목록 (기본 서울)
-internal const val CITY_SEOUL = "서울"
+// addressCity 드롭다운에 쓸 실제 시 목록 (기본 서울시)
+internal const val CITY_SEOUL = "서울시"
 
 // addressDistrict 드롭다운에 쓸 실제 구 목록 ("전체" 제외)
 private val districtOptions: List<String> = Districts.seoul.filter { it != Districts.ALL_LABEL }
@@ -73,7 +73,7 @@ internal fun AddressSection(
         SectionLabel(label = "주소", required = true)
         Spacer(Modifier.height(8.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            ChipDropdown( // 현재 서울만 선택 가능
+            ChipDropdown( // 현재 서울시만 선택 가능
                 label = city,
                 options = listOf(CITY_SEOUL),
                 onSelect = onCityChange,

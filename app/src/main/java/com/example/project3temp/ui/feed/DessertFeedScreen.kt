@@ -75,8 +75,8 @@ import com.example.project3temp.ui.theme.SoldOutRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-// 현재 "시"는 "서울"만 사용 - 추 후 확장 가능
-private const val DEFAULT_CITY = "서울"
+// 현재 "시"는 "서울시"만 사용 - 추 후 확장 가능
+private const val DEFAULT_CITY = "서울시"
 private val cityOptions: List<String> = listOf(DEFAULT_CITY)
 
 // 피드 화면이 가질 수 있는 상태 3가지 - 로딩, 성공, 에러
@@ -206,7 +206,7 @@ fun DessertFeedScreen(
                 selected = selectedCategory, // 선택중인 카테고리 (null = 전체)
                 onSelect = { selectedCategory = it }, // 상태 저장
             )
-            FilterRow( // 지역 필터링과 정렬 // todo 서울 이외의 "시" 추가
+            FilterRow( // 지역 필터링과 정렬 // todo 서울시 이외의 "시" 추가
                 selectedCity = selectedCity, // "시" 필터링
                 onCityChange = { selectedCity = it },
                 selectedDistrict = selectedDistrict, // "구" 필터링
@@ -320,7 +320,7 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilterChipDropdown( // "시" 필터링 (현재 서울만)
+        FilterChipDropdown( // "시" 필터링 (현재 서울시만)
             label = selectedCity,
             options = cityOptions,
             onSelect = onCityChange,
