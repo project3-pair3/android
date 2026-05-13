@@ -190,7 +190,10 @@ fun DessertFeedScreen(
             )
         },
         floatingActionButton = {
-            AddFab(onClick = onAddClick)
+            // 로그인한 사용자에게만 재고 등록 버튼 노출
+            if (UserSession.current != null) {
+                AddFab(onClick = onAddClick)
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -525,8 +528,7 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
     }
 }
 
-// todo 로그인 유저에게만 활성화
-// 재고 등록 버튼
+// 재고 등록 버튼 (로그인 상태일 때만 호출됨)
 @Composable
 private fun AddFab(onClick: () -> Unit) {
     Box(

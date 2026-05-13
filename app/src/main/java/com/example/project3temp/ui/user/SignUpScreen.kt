@@ -117,7 +117,6 @@ fun SignUpScreen(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("닉네임")},
                 placeholder = { Text("닉네임을 입력하세요")},
-                visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
             )
 
