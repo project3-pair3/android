@@ -112,7 +112,11 @@ internal fun MenuRow(category: DessertCategory, item: MenuItem) {
 @Composable
 private fun StockLabel(stock: Int?) {
     when {
-        stock == null -> Unit
+        stock == null -> Text( // null이면 "정보 없음"
+            text = "정보 없음",
+            fontSize = 12.sp,
+            color = Color.Gray,
+        )
         stock == 0 -> Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(6.dp))
@@ -134,7 +138,7 @@ private fun StockLabel(stock: Int?) {
     }
 }
 
-// 가격 포맷 - 1000단위로 , 표기
+// 가격 포맷 - 1000단위로 , 표기. null이면 "정보 없음" (0은 "₩0"으로 표시)
 private fun formatCost(cost: Int?): String =
     if (cost == null) "정보 없음"
     else "₩" + NumberFormat.getNumberInstance(Locale.KOREA).format(cost)

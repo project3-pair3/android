@@ -226,8 +226,9 @@ internal fun buildCreateCafeRequest(
         MenuItemDto(
             itemName = d.name.trim(),
             typeId = d.category.typeId,
-            cost = d.price.toIntOrNull() ?: 0,
-            stock = d.stock.toIntOrNull() ?: 0,
+            // 빈칸이면 null로 전송 (0과 구분 - 0은 솔드아웃, null은 미입력)
+            cost = d.price.toIntOrNull(),
+            stock = d.stock.toIntOrNull(),
         )
     },
 )
