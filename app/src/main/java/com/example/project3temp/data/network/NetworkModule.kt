@@ -32,4 +32,5 @@ object NetworkModule {
         .build()
 
     val cafeApi: CafeApi = retrofit.create(CafeApi::class.java)
+    val userApi: UserApi = retrofit.create(UserApi::class.java)
 }

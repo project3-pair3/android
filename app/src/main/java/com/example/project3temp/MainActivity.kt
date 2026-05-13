@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.project3temp.data.UserSession
 import com.example.project3temp.ui.compose.ComposeScreen
 import com.example.project3temp.ui.detail.DessertDetailScreen
 import com.example.project3temp.ui.feed.DessertFeedScreen
@@ -17,7 +18,7 @@ import com.example.project3temp.ui.user.SignUpScreen
 
 private sealed interface Screen {
     data object Feed : Screen
-    data object Compose : Screen
+    data class Compose(val userId: Int) : Screen // userId = 로그인한 user의 pk
     data class Detail(val cafeId: Int, val cafeName: String) : Screen
     data object Login : Screen
     data object SignUp : Screen
@@ -37,7 +38,11 @@ class MainActivity : ComponentActivity() {
                     is Screen.Feed -> DessertFeedScreen(
                         snackbarMessage = feedMessage, // 카페 작성 완료 후 메시지
                         onSnackbarShown = { feedMessage = null },
-                        onAddClick = { screen = Screen.Compose }, // 카페 작성 페이지
+                        onAddClick = {
+                            // FAB는 로그인 상태일 때만 보이므로 current는 not null이지만, 안전하게 한 번 더 체크
+                            val user = UserSession.current ?: return@DessertFeedScreen
+                            screen = Screen.Compose(user.id)
+                        },
                         onCardClick = { cafeId, cafeName -> // 상세 페이지
                             screen = Screen.Detail(cafeId, cafeName)
                         },
@@ -45,6 +50,7 @@ class MainActivity : ComponentActivity() {
                     )
 
                     is Screen.Compose -> ComposeScreen(
+                        userId = current.userId,
                         onClose = { screen = Screen.Feed },
                         onSubmitSuccess = {
                             feedMessage = "카페가 등록되었어요"

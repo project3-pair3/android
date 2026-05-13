@@ -42,6 +42,48 @@ data class CreateCafeRequest(
 )
 
 
+// 회원가입 (POST /users/join) - 응답 body 없음 (201)
+@Serializable
+data class JoinRequest(
+    val userId: String,
+    val password: String,
+    val nickname: String,
+)
+
+// 로그인 (POST /users/login)
+@Serializable
+data class LoginRequest(
+    val userId: String,
+    val password: String,
+)
+
+// 로그인 응답 (200)
+@Serializable
+data class LoginResponse(
+    val id: Int,          // pk
+    val userId: String,
+    val nickname: String,
+)
+
+// 카페 정보 조회 (GET /cafes/info/{userId}) - 사용자의 카페 상태 + 기존 데이터
+// statusCode 의미:
+//   1 = 등록된 카페 없음 (필드 모두 빈 값으로 옴)
+//   2 = 데이터는 있지만 아직 업로드 전 (prefill 후 "카페 정보 업로드" 버튼)
+//   3 = 이미 업로드된 카페 있음 (prefill 후 "카페 정보 수정" 버튼)
+@Serializable
+data class CafeInfoResponse(
+    val statusCode: Int,
+    val cafeName: String = "",
+    val addressCity: String = "",
+    val addressDistrict: String = "",
+    val addressDetail: String = "",
+    val description: String? = null,
+    val open: String? = null,    // "HH:mm"
+    val close: String? = null,   // "HH:mm"
+    val imageUrl: String? = null,
+    val menu: List<MenuItemDto> = emptyList(),
+)
+
 @Serializable
 data class CafeListItem(
     val id: Int,

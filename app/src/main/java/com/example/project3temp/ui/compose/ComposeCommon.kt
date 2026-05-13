@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.network.CreateCafeRequest
 import com.example.project3temp.data.network.MenuItemDto
 import com.example.project3temp.ui.theme.BrandOrange
@@ -176,6 +177,30 @@ internal fun brandFieldColors() = OutlinedTextFieldDefaults.colors(
 // 밀리초를 활용한 MenuDraftId 표현
 internal fun newDraftId(): String =
     System.currentTimeMillis().toString() + "-" + (0..9999).random()
+
+// "HH:mm" 문자열을 TimeInput으로 파싱. 형식이 이상하거나 null이면 빈 TimeInput 반환
+internal fun parseTimeOrEmpty(value: String?): TimeInput {
+    if (value.isNullOrBlank()) return TimeInput()
+    val parts = value.split(":")
+    if (parts.size < 2) return TimeInput()
+    val hour = parts[0].toIntOrNull()
+    val minute = parts[1].toIntOrNull()
+    if (hour == null || minute == null) return TimeInput()
+    return TimeInput(hour = hour, minute = minute)
+}
+
+// 서버 응답 MenuItemDto → 화면에서 편집하는 MenuItemDraft 로 변환
+internal fun MenuItemDto.toDraft(): MenuItemDraft {
+    val category = DessertCategory.byTypeId(typeId) ?: DessertCategory.entries.first()
+    return MenuItemDraft(
+        id = newDraftId(),
+        category = category,
+        name = itemName,
+        // 백엔드에서 0이나 null로 오면 입력란을 빈 상태로 보여줌
+        price = cost?.takeIf { it > 0 }?.toString() ?: "",
+        stock = stock?.takeIf { it > 0 }?.toString() ?: "",
+    )
+}
 
 // 카페 정보 업로드용 request
 internal fun buildCreateCafeRequest(
