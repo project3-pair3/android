@@ -42,6 +42,29 @@ data class CreateCafeRequest(
 )
 
 
+// 회원가입 (POST /users/join) - 응답 body 없음 (201)
+@Serializable
+data class JoinRequest(
+    val userId: String,
+    val password: String,
+    val nickname: String,
+)
+
+// 로그인 (POST /users/login)
+@Serializable
+data class LoginRequest(
+    val userId: String,
+    val password: String,
+)
+
+// 로그인 응답 (200)
+@Serializable
+data class LoginResponse(
+    val id: Int,          // pk
+    val userId: String,
+    val nickname: String,
+)
+
 @Serializable
 data class CafeListItem(
     val id: Int,

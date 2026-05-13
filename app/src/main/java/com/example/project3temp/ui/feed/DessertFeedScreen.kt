@@ -62,6 +62,7 @@ import com.example.project3temp.data.Categories
 import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.Districts
 import com.example.project3temp.data.ListingTypes
+import com.example.project3temp.data.UserSession
 import com.example.project3temp.data.network.CafeListItem
 import com.example.project3temp.data.network.NetworkModule
 import com.example.project3temp.data.network.formatHours
@@ -150,14 +151,39 @@ fun DessertFeedScreen(
                         )
                     }
                 },
-                actions = { // 우측 상단 "로그인" 버튼
-                    TextButton(onClick = onLoginClick) {
-                        Text(
-                            text = "로그인",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = BrandOrange,
-                        )
+                actions = { // 로그인 상태에 따라 [로그인] 또는 [닉네임 + 로그아웃]
+                    val user = UserSession.current
+                    if (user == null) {
+                        TextButton(onClick = onLoginClick) {
+                            Text(
+                                text = "로그인",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandOrange,
+                            )
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) {
+                            Text(
+                                text = user.nickname,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = BrandOrange,
+                            )
+                            TextButton(
+                                onClick = { UserSession.logout() },
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                            ) {
+                                Text(
+                                    text = "로그아웃",
+                                    fontSize = 12.sp,
+                                    color = Color.Gray,
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BrandBackground),
