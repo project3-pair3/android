@@ -1,5 +1,6 @@
 package com.example.project3temp.ui.compose
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,17 +42,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.network.CafeInfoResponse
+import com.example.project3temp.data.network.ImageUrlRequest
 import com.example.project3temp.data.network.NetworkModule
 import com.example.project3temp.data.network.toUserMessage
 import com.example.project3temp.ui.theme.BrandBackground
 import com.example.project3temp.ui.theme.BrandOrange
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // 화면 상태 3가지: 로딩 / 에러 / 정보 수신 완료
 private sealed interface InfoLoadState {
@@ -129,6 +134,8 @@ private fun CafeForm(
     info: CafeInfoResponse,
     onSubmitSuccess: () -> Unit,
 ) {
+    val context = LocalContext.current
+
     // 응답을 폼 초기값으로 변환
     // statusCode == 1 이면 응답 필드가 어차피 빈 값이라 빈 폼이 됨
     var cafeName by remember { mutableStateOf(info.cafeName) }
@@ -141,7 +148,14 @@ private fun CafeForm(
     var addressDetail by remember { mutableStateOf(info.addressDetail) }
     var openInput by remember { mutableStateOf(parseTimeOrEmpty(info.open)) }
     var closeInput by remember { mutableStateOf(parseTimeOrEmpty(info.close)) }
-    var imageUri by remember { mutableStateOf<String?>(info.imageUrl?.ifBlank { null }) }
+    // 화면에 표시할 이미지 (로컬 URI 문자열 또는 기존 서버 URL)
+    var displayImageUri by remember { mutableStateOf<String?>(info.imageUrl?.ifBlank { null }) }
+    // 새로 선택한 로컬 이미지 URI (null이면 이미지 변경 없음)
+    var pendingLocalUri by remember { mutableStateOf<Uri?>(null) }
+    // GET /s3/presigned-url 응답으로 받은 presigned URL과 최종 image URL
+    var presignedUrl by remember { mutableStateOf<String?>(null) }
+    var s3ImageUrl by remember { mutableStateOf<String?>(null) }
+    var isFetchingPresignedUrl by remember { mutableStateOf(false) }
     var intro by remember { mutableStateOf(info.description ?: "") }
     var menuItems by remember {
         mutableStateOf(
@@ -166,17 +180,47 @@ private fun CafeForm(
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
-        if (uri != null) imageUri = uri.toString()
+        if (uri != null) {
+            displayImageUri = uri.toString()
+            pendingLocalUri = uri
+            presignedUrl = null
+            s3ImageUrl = null
+            isFetchingPresignedUrl = true
+            // 이미지 선택 직후 presigned URL + image URL 발급
+            scope.launch {
+                val contentType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                val fileName = context.contentResolver.query(
+                    uri,
+                    arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),
+                    null, null, null,
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) cursor.getString(0) else null
+                } ?: uri.lastPathSegment ?: "image.jpg"
+                runCatching {
+                    NetworkModule.s3Api.getPresignedUrl(fileName, contentType)
+                }.fold(
+                    onSuccess = { res ->
+                        presignedUrl = res.presignedUrl
+                        s3ImageUrl = res.imageUrl
+                    },
+                    onFailure = {
+                        snackbarHostState.showSnackbar("이미지 URL 준비 실패: ${it.toUserMessage()}")
+                    },
+                )
+                isFetchingPresignedUrl = false
+            }
+        }
     }
 
-    // not null 필드 입력 여부 확인
+    // not null 필드 입력 여부 확인. presigned URL 발급 중에는 제출 불가
     val canSubmit = !isSubmitting &&
+        !isFetchingPresignedUrl &&
         cafeName.isNotBlank() &&
         addressDistrict != null &&
         addressDetail.isNotBlank() &&
         openInput.isComplete() &&
         closeInput.isComplete() &&
-        imageUri != null &&
+        displayImageUri != null &&
         menuItems.isNotEmpty() && menuItems.all { it.name.isNotBlank() }
 
     // statusCode == 3 이면 "수정", 1/2 이면 "업로드"
@@ -195,7 +239,8 @@ private fun CafeForm(
 
             // 사진 업로드 1장 - 필수
             PhotoUploadBox(
-                imageUri = imageUri,
+                imageUri = displayImageUri,
+                isLoading = isFetchingPresignedUrl,
                 onPick = {
                     launcher.launch(
                         PickVisualMediaRequest(
@@ -257,32 +302,65 @@ private fun CafeForm(
 
             Button(
                 onClick = {
+                    val district = addressDistrict ?: return@Button
+                    val openTime = openInput.toApiString() ?: return@Button
+                    val closeTime = closeInput.toApiString() ?: return@Button
+                    val hasNewImage = pendingLocalUri != null
+                    // 새 이미지가 있으면 일단 빈 값으로 전송 후 S3 업로드 성공 시 별도 업데이트
+                    val cafeImageUrl = if (hasNewImage) "" else (displayImageUri ?: "")
                     val request = buildCreateCafeRequest(
                         cafeName = cafeName,
                         addressCity = addressCity,
-                        addressDistrict = addressDistrict ?: return@Button,
+                        addressDistrict = district,
                         addressDetail = addressDetail,
                         intro = intro,
-                        openTime = openInput.toApiString() ?: return@Button,
-                        closeTime = closeInput.toApiString() ?: return@Button,
-                        imageUrl = imageUri ?: return@Button,
+                        openTime = openTime,
+                        closeTime = closeTime,
+                        imageUrl = cafeImageUrl,
                         drafts = menuItems,
                     )
                     isSubmitting = true
                     scope.launch {
-                        val result = runCatching {
-                            // PUT /cafes/update/{userId} - 1/2/3 모두 동일하게 호출
+                        // 1단계: PUT /cafes/update/{userId} - 1/2/3 모두 동일하게 호출
+                        val cafeResult = runCatching {
                             NetworkModule.cafeApi.updateCafe(userId, request)
                         }
+                        if (cafeResult.isFailure) {
+                            isSubmitting = false
+                            snackbarHostState.showSnackbar(
+                                "업로드 실패: ${cafeResult.exceptionOrNull()?.toUserMessage()}",
+                            )
+                            return@launch
+                        }
+
+                        // 2단계: 새 이미지가 있고 presigned URL 발급이 성공한 경우 S3에 PUT
+                        if (hasNewImage && presignedUrl != null) {
+                            val uri = pendingLocalUri!!
+                            val contentType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                            val imageBytes = withContext(Dispatchers.IO) {
+                                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                            }
+                            if (imageBytes != null) {
+                                val s3Result = runCatching {
+                                    NetworkModule.uploadToS3(presignedUrl!!, imageBytes, contentType)
+                                }
+                                // 3단계: S3 업로드 성공 시 imageUrl을 cafe DB에 반영
+                                if (s3Result.isSuccess) {
+                                    s3ImageUrl?.let { url ->
+                                        runCatching {
+                                            NetworkModule.cafeApi.updateCafeImage(
+                                                userId,
+                                                ImageUrlRequest(url),
+                                            )
+                                        }
+                                    }
+                                }
+                                // S3 업로드 실패해도 카페 정보는 이미 DB에 들어간 상태이므로 성공 처리
+                            }
+                        }
+
                         isSubmitting = false
-                        result.fold(
-                            onSuccess = { onSubmitSuccess() },
-                            onFailure = { e ->
-                                snackbarHostState.showSnackbar(
-                                    "업로드 실패: ${e.toUserMessage()}",
-                                )
-                            },
-                        )
+                        onSubmitSuccess()
                     }
                 },
                 enabled = canSubmit,

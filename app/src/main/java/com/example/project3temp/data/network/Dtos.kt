@@ -84,6 +84,19 @@ data class CafeInfoResponse(
     val menu: List<MenuItemDto> = emptyList(),
 )
 
+// GET /s3/presigned-url 응답
+@Serializable
+data class PresignedUrlResponse(
+    val presignedUrl: String,
+    val imageUrl: String,
+)
+
+// PATCH /cafes/update/{userId}/image - imageUrl만 업데이트
+@Serializable
+data class ImageUrlRequest(
+    val imageUrl: String,
+)
+
 @Serializable
 data class CafeListItem(
     val id: Int,
