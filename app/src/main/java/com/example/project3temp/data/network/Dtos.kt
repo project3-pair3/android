@@ -14,6 +14,8 @@ data class CafeMenusResponse(
     val open: String? = null,   // 백엔드 응답: "HH:mm" 형식 (예: "09:00")
     val close: String? = null,  // 백엔드 응답: "HH:mm" 형식
     val imageUrl: String? = null,
+    val createdAt: String? = null,
+    val updatedAt: String? = null,
     val menu: List<MenuItemDto> = emptyList(),
 )
 

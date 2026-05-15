@@ -95,6 +95,28 @@ internal fun CafeContent(cafe: CafeMenusResponse) {
             }
         }
 
+        cafe.createdAt?.let { createdAt ->
+            item {
+                Text(
+                    text = "등록일: $createdAt",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
+        }
+
+        cafe.updatedAt?.let { updatedAt ->
+            item {
+                Text(
+                    text = "수정일: $updatedAt",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp),
+                )
+            }
+        }
+
         // description 없으면 "No Description" 출력
         item {
             val hasDescription = !cafe.description.isNullOrBlank()
