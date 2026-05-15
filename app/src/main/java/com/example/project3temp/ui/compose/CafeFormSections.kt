@@ -164,6 +164,38 @@ internal fun IntroSection(
     }
 }
 
+// mention 입력 (피드에 표시할 짧은 문구) - nullable
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun MentionSection(
+    value: String,
+    onChange: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+    ) {
+        SectionLabel(label = "오늘의 한마디", required = false)
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = value,
+            onValueChange = onChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = "피드에 표시할 짧은 문구 넣어주세요!",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
+                )
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            colors = brandFieldColors(),
+        )
+    }
+}
+
 @Composable
 internal fun MenuItemsSection(
     items: List<MenuItemDraft>, // MenuItemDraft : 메뉴 기본 정보

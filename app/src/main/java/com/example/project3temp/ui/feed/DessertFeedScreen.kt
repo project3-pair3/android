@@ -71,7 +71,6 @@ import com.example.project3temp.ui.theme.BrandBackground
 import com.example.project3temp.ui.theme.BrandOrange
 import com.example.project3temp.ui.theme.BrandOrangeSoft
 import com.example.project3temp.ui.theme.DistrictChipBg
-import com.example.project3temp.ui.theme.SoldOutRed
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -401,7 +400,6 @@ private fun FeedHeader(count: Int) {
     }
 }
 
-
 // 로딩 화면
 @Composable
 private fun LoadingView() {
@@ -515,14 +513,16 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
                     color = Color.Gray,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(6.dp))
-                // 총 재고 수
-                Text(
-                    text = "오늘 ${cafe.totalCount}개",
-                    fontSize = 13.sp,
-                    color = SoldOutRed,
-                    fontWeight = FontWeight.Bold,
-                )
+                // 사장님 한줄평
+                cafe.mention?.takeIf { it.isNotBlank() }?.let { mention ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = mention,
+                        fontSize = 12.sp,
+                        color = Color.DarkGray,
+                        maxLines = 2,
+                    )
+                }
             }
         }
     }

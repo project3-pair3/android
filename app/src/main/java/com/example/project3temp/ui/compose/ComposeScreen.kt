@@ -157,6 +157,7 @@ private fun CafeForm(
     // 이미지 선택 후 presigned URL 발급 + S3 업로드가 완료될 때까지 true
     var isUploadingImage by remember { mutableStateOf(false) }
     var intro by remember { mutableStateOf(info.description ?: "") }
+    var mention by remember { mutableStateOf(info.mention ?: "") }
     var menuItems by remember {
         mutableStateOf(
             if (info.menu.isEmpty()) {
@@ -302,6 +303,11 @@ private fun CafeForm(
 
             HorizontalDivider(color = Color(0xFFEEE6DD))
 
+            // 오늘의 한마디 (mention) - nullable, 피드 카드에 표시
+            MentionSection(value = mention, onChange = { mention = it })
+
+            HorizontalDivider(color = Color(0xFFEEE6DD))
+
             // 메뉴 정보 기입 - 적어도 1개 입력
             MenuItemsSection(
                 items = menuItems,
@@ -336,6 +342,7 @@ private fun CafeForm(
                         addressDistrict = district,
                         addressDetail = addressDetail,
                         intro = intro,
+                        mention = mention,
                         openTime = openTime,
                         closeTime = closeTime,
                         imageUrl = cafeImageUrl,

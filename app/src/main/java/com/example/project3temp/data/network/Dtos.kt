@@ -38,6 +38,7 @@ data class CreateCafeRequest(
     val open: String,   // "HH:mm:ss" 형식, 초는 항상 00 (예: "09:00:00")
     val close: String,  // "HH:mm:ss" 형식, 초는 항상 00
     val imageUrl: String,
+    val mention: String? = null,
     val menu: List<MenuItemDto>,
 )
 
@@ -81,6 +82,7 @@ data class CafeInfoResponse(
     val open: String? = null,    // "HH:mm"
     val close: String? = null,   // "HH:mm"
     val imageUrl: String? = null,
+    val mention: String? = null,
     val menu: List<MenuItemDto> = emptyList(),
 )
 
@@ -107,6 +109,7 @@ data class CafeListItem(
     val open: String? = null,   // 백엔드 응답: "HH:mm" 형식
     val close: String? = null,  // 백엔드 응답: "HH:mm" 형식
     val imageUrl: String? = null,
-    val totalCount: Int = 0,
+    val mention: String? = null, // 사장님의 한줄평 (ex. 오늘부터 두쫀쿠 출시!!) 카드에 최대 2줄정도만 표시될 길이로
+    //val totalCount: Int = 0,
     val createdAt: String? = null,
 )
