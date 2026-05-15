@@ -37,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.CircularProgressIndicator
 import coil.compose.AsyncImage
 import com.example.project3temp.data.DessertCategory
 import com.example.project3temp.data.network.CreateCafeRequest
@@ -98,6 +99,7 @@ internal fun ChipDropdown(
 @Composable
 internal fun PhotoUploadBox(
     imageUri: String?,
+    isLoading: Boolean = false,
     onPick: () -> Unit,
 ) {
     Box(
@@ -160,6 +162,18 @@ internal fun PhotoUploadBox(
                     fontSize = 12.sp,
                     color = Color.Gray,
                 )
+            }
+        }
+
+        // presigned URL 발급 중 로딩 오버레이
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.35f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = Color.White, strokeWidth = 3.dp)
             }
         }
     }

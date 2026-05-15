@@ -2,6 +2,7 @@ package com.example.project3temp.data.network
 
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -39,5 +40,12 @@ interface CafeApi {
     suspend fun updateCafe(
         @Path("userId") userId: Int,
         @Body body: CreateCafeRequest,
+    )
+
+    // S3 업로드 성공 후 imageUrl만 cafe DB에 반영
+    @PATCH("cafes/update/{userId}/image")
+    suspend fun updateCafeImage(
+        @Path("userId") userId: Int,
+        @Body body: ImageUrlRequest,
     )
 }
