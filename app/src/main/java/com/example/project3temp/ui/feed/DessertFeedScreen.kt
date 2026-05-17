@@ -55,6 +55,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -471,7 +472,7 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
-        shadowElevation = 1.dp,
+        shadowElevation = 2.dp,
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
@@ -486,41 +487,49 @@ private fun CafeCard(cafe: CafeListItem, onClick: () -> Unit) {
                     .aspectRatio(1f)
                     .background(Color(0xFFF1ECE6)),
             )
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Text(
                     text = cafe.cafeName, // 카페 이름
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
+                Spacer(Modifier.height(5.dp))
+                // 시 - 구 위치 표현
+                val area = listOfNotNull(cafe.addressCity, cafe.addressDistrict)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ")
+                if (area.isNotBlank()) {
+                    Text(
+                        text = area,
+                        fontSize = 11.sp,
+                        color = Color(0xFFAAAAAA),
+                        maxLines = 1,
+                        lineHeight = 16.sp,
+                    )
+                }
                 // 운영 시간
                 formatHours(cafe.open, cafe.close)?.let { hours ->
-                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = hours,
                         fontSize = 11.sp,
-                        color = Color.Gray,
+                        color = Color(0xFFAAAAAA),
                         maxLines = 1,
+                        lineHeight = 16.sp,
                     )
                 }
-                Spacer(Modifier.height(2.dp))
-                // 시 - 구 위치 표현
-                Text(
-                    text = listOfNotNull(cafe.addressCity, cafe.addressDistrict)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" "),
-                    fontSize = 11.sp,
-                    color = Color.Gray,
-                    maxLines = 1,
-                )
                 // 사장님 한줄평
                 cafe.mention?.takeIf { it.isNotBlank() }?.let { mention ->
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = mention,
-                        fontSize = 12.sp,
-                        color = Color.DarkGray,
+                        fontSize = 11.sp,
+                        color = Color(0xFF555555),
+                        fontWeight = FontWeight.Medium,
                         maxLines = 2,
+                        lineHeight = 15.sp,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
