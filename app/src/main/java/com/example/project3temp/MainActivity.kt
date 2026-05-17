@@ -33,6 +33,8 @@ class MainActivity : ComponentActivity() {
                 var screen by remember { mutableStateOf<Screen>(Screen.Feed) }
                 // Feed에 띄울 스낵바 메시지 (예: 카페 등록 성공 후)
                 var feedMessage by remember { mutableStateOf<String?>(null) }
+                // Login에 띄울 스낵바 메시지 (예: 회원가입 성공 후)
+                var loginMessage by remember { mutableStateOf<String?>(null) }
 
                 when (val current = screen) {
                     is Screen.Feed -> DessertFeedScreen(
@@ -65,6 +67,8 @@ class MainActivity : ComponentActivity() {
                     )
 
                     Screen.Login -> LoginScreen(
+                        snackbarMessage = loginMessage,
+                        onSnackbarShown = { loginMessage = null },
                         onClose = { screen = Screen.Feed }, // 메인 페이지로
                         onSignUpClick = { screen = Screen.SignUp }, // 회원가입 페이지로
                         onLoginSuccess = { screen = Screen.Feed }, // TODO: 로그인 성공 후 동작 사용자가 결정
@@ -72,7 +76,10 @@ class MainActivity : ComponentActivity() {
 
                     Screen.SignUp -> SignUpScreen(
                         onBack = { screen = Screen.Login }, // 로그인 페이지로
-                        onSignUpSuccess = { screen = Screen.Login }, // 회원가입 완료 → 로그인 화면으로
+                        onSignUpSuccess = {
+                            loginMessage = "회원가입이 완료되었습니다"
+                            screen = Screen.Login
+                        },
                     )
                 }
             }

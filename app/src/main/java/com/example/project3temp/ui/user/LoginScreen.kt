@@ -16,6 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,11 +43,14 @@ import com.example.project3temp.data.network.NetworkModule
 import com.example.project3temp.data.network.toUserMessage
 import com.example.project3temp.ui.theme.BrandBackground
 import com.example.project3temp.ui.theme.BrandOrange
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
+    snackbarMessage: String? = null,
+    onSnackbarShown: () -> Unit = {},
     onClose: () -> Unit,
     onSignUpClick: () -> Unit,
     onLoginSuccess: () -> Unit,
@@ -54,8 +59,22 @@ fun LoginScreen(
     var password by remember {mutableStateOf("") } // 비밀번호 입력 상태
 
     var isSubmitting by remember { mutableStateOf(false) } // 로그인 진행중 상태
-    val snackbarHostState = remember { SnackbarHostState() } // 에러 메시지 표시
+    val snackbarHostState = remember { SnackbarHostState() } // 에러/성공 메시지 표시
     val scope = rememberCoroutineScope()
+
+    // 외부에서 메시지가 들어오면 3초간 보여주고 자동으로 숨김
+    LaunchedEffect(snackbarMessage) {
+        val msg = snackbarMessage ?: return@LaunchedEffect
+        val job = launch {
+            snackbarHostState.showSnackbar(msg, duration = SnackbarDuration.Indefinite)
+        }
+        try {
+            delay(3000)
+        } finally {
+            job.cancel()
+            onSnackbarShown()
+        }
+    }
 
     Scaffold(
         containerColor = BrandBackground,
