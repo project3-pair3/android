@@ -82,27 +82,44 @@ internal fun CafeContent(cafe: CafeMenusResponse) {
             )
         }
 
-        // HH:MM ~ HH:MM
-        formatHours(cafe.open, cafe.close)?.let { hours ->
-            item {
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                // [영업시간]
                 Text(
-                    text = hours,
+                    text = "[영업시간]",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.DarkGray,
+                )
+                val hours = formatHours(cafe.open, cafe.close)
+                Text(
+                    text = hours ?: "-",
                     fontSize = 13.sp,
                     color = Color.Gray,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+                Spacer(Modifier.height(20.dp))
+                // [소개]
+                Text(
+                    text = "[소개]",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.DarkGray,
+                )
+                val hasDescription = !cafe.description.isNullOrBlank()
+                Text(
+                    text = if (hasDescription) cafe.description!! else "-",
+                    fontSize = 13.sp,
+                    color = Color.Gray,
                 )
             }
         }
 
-        // description 없으면 "No Description" 출력
         item {
-            val hasDescription = !cafe.description.isNullOrBlank()
             Text(
-                text = if (hasDescription) cafe.description!! else "No Description",
-                fontSize = 14.sp,
-                color = if (hasDescription) Color.DarkGray else Color.Gray,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+                text = "재고 수량은 초기 등록과 상이할 수 있습니다",
+                fontSize = 11.sp,
+                color = Color.LightGray,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
 

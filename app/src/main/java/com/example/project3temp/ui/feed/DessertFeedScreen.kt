@@ -164,7 +164,7 @@ fun DessertFeedScreen(
                     } else {
                         Column(
                             horizontalAlignment = Alignment.End,
-                            modifier = Modifier.padding(end = 8.dp),
+                            modifier = Modifier.padding(end = 8.dp, top = 4.dp),
                         ) {
                             Text(
                                 text = user.nickname,
