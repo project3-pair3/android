@@ -23,8 +23,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -193,6 +193,12 @@ fun DessertFeedScreen(
             // 로그인한 사용자에게만 재고 등록 버튼 노출
             if (UserSession.current != null) {
                 AddFab(onClick = onAddClick)
+            }
+        },
+        bottomBar = {
+            // 비로그인 상태에서 카페 등록 안내 배너
+            if (UserSession.current == null) {
+                LoginPromptBanner(onLoginClick = onLoginClick)
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -549,9 +555,74 @@ private fun AddFab(onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Default.Add,
+            imageVector = Icons.Default.Home,
             contentDescription = "재고 등록",
             tint = Color.White,
         )
+    }
+}
+
+// 비로그인 상태 하단 안내 배너
+@Composable
+private fun LoginPromptBanner(onLoginClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFFFF8F3)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(BrandOrangeSoft),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = null,
+                        tint = BrandOrange,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Column {
+                    Text(
+                        text = "카페 사장님이신가요?",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF333333),
+                    )
+                    Text(
+                        text = "로그인하고 카페 정보를 등록해보세요",
+                        fontSize = 12.sp,
+                        color = Color(0xFF888888),
+                    )
+                }
+            }
+            Button(
+                onClick = onLoginClick,
+                colors = ButtonDefaults.buttonColors(containerColor = BrandOrange),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "로그인",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+            }
+        }
     }
 }
