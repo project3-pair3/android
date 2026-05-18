@@ -53,14 +53,17 @@ object Districts {
 
 // 정렬 기준
 object ListingTypes {
-    const val BASIC = "basic" // 기본 - db 순서 (또는 가나다 순으로 변경 가능)
+    // const val BASIC = "basic" // 기본 - db 순서 (또는 가나다 순으로 변경 가능)
     const val RECENTLY_UPDATED = "recentlyUpdated" // 업데이트 순 - 최근 업데이트를 먼저 보여줌
+
+    const val OLDEST = "oldest" // 업데이트 순 - 역순
 
     data class Option(val value: String, val label: String)
 
     val options: List<Option> = listOf(
-        Option(BASIC, "기본"),
+        //Option(BASIC, "기본"),
         Option(RECENTLY_UPDATED, "최근 업데이트"),
+        Option(OLDEST, "오래된 순"),
     )
 
     fun labelOf(value: String): String =

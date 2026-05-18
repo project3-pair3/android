@@ -63,7 +63,7 @@ fun DessertFeedScreen(
     var selectedCategory by remember { mutableStateOf<DessertCategory?>(null) } // 메뉴 대분류 필터링 (null = 전체)
     var selectedCity by remember { mutableStateOf(DEFAULT_CITY) } // 지역 "시" 필터링
     var selectedDistrict by remember { mutableStateOf(Districts.ALL_LABEL) } // 지역 "구" 필터링
-    var selectedListingType by remember { mutableStateOf(ListingTypes.BASIC) } // 정렬 기준
+    var selectedListingType by remember { mutableStateOf(ListingTypes.RECENTLY_UPDATED) } // 정렬 기준
     var uiState by remember { mutableStateOf<FeedUiState>(FeedUiState.Loading) } // 로딩중
     var reloadKey by remember { mutableIntStateOf(0) } // 에러 화면에서 LaunchEffect 재실행을 위한 더미 데이터
     val snackbarHostState = remember { SnackbarHostState() } // 카페 정보 등록 성공 메시지
