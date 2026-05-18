@@ -15,7 +15,9 @@ import java.io.IOException
 
 object NetworkModule {
     // Android 에뮬레이터에서 호스트 머신의 localhost
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    //private const val BASE_URL = "http://10.0.2.2:8080/"
+    //private const val BASE_URL = "http://52.79.254.210:8080/"
+    private const val BASE_URL = "https://sangminhub.duckdns.org/"
 
     private val json = Json {
         ignoreUnknownKeys = true
